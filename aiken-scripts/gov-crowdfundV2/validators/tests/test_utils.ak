@@ -95,7 +95,7 @@ pub const mock_stake_register_deposit = 2000000
 
 pub const mock_drep_register_deposit = 500000000
 
-pub const mock_gov_deposit = 50000000
+pub const mock_gov_deposit = 100000000000
 
 pub const mock_funds_controlled =
   mock_fundraise_target + mock_stake_register_deposit + mock_drep_register_deposit + 1000000

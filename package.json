@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --require ./tests/preload.cjs --import tsx --test --test-force-exit **/*.test.ts"
   },
   "dependencies": {
+    "@cardano-sdk/core": "^0.46.12",
     "@meshsdk/core": "^1.9.0-beta.98",
+    "@meshsdk/core-cst": "^1.9.0-beta.98",
     "@meshsdk/wallet": "^2.0.0-beta.5",
+    "libsodium-wrappers-sumo": "0.7.15",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -18,12 +22,14 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/libsodium-wrappers-sumo": "^0.7.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

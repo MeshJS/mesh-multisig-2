@@ -1,4 +1,6 @@
+use aiken/cbor
 use cardano/assets.{add, from_lovelace}
+use cardano/governance.{NicePoll}
 use cardano/transaction.{OutputReference, Spend, Transaction}
 use gcf_spend as gcf_spend_validator
 use mocktail.{
@@ -8,8 +10,8 @@ use mocktail.{
 }
 use share_token/mint as share_token_mint
 use tests/test_utils.{
-  mock_auth_token, mock_completion_script,
-  mock_crowdfund_datum, mock_current_fundraised_amount, mock_delegate_pool_id,
+  mock_auth_token, mock_completion_script, mock_crowdfund_datum,
+  mock_current_fundraised_amount, mock_delegate_pool_id,
   mock_drep_register_deposit, mock_fee_address, mock_fundraise_target,
   mock_gov_action, mock_gov_address, mock_gov_deposit, mock_min_charge,
   mock_proposer_key_hash, mock_share_token, mock_stake_hash,
@@ -94,7 +96,10 @@ fn mock_complete_crowdfund_tx(
     |> tx_out_inline_datum(is_fundraise_target_sent, fundraise_output_datum)
     // One auth output at same address so get_single_auth_io passes; wrong value so lovelace_check fails (RegisterCerts expects deduction)
     |> tx_out(True, mock_gov_address, input_value)
-    |> tx_out_inline_datum(True, mock_crowdfund_datum(current_fundraised_amount, False))
+    |> tx_out_inline_datum(
+        True,
+        mock_crowdfund_datum(current_fundraised_amount, False),
+      )
     |> script_withdrawal(
         is_completion_script_executed,
         mock_completion_script,
@@ -199,4 +204,9 @@ test complete_crowdfund_fail_with_input_wrong_redeemer() {
     RegisterCerts,
     mock_stake_hash,
   )
+}
+
+test nice_poll() {
+  trace cbor.serialise(NicePoll)
+  True
 }
