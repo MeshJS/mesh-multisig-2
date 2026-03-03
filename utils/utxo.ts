@@ -1,5 +1,5 @@
 import { UTxO } from "@meshsdk/core";
-import { toTxUnspentOutput } from "@meshsdk/core-cst";
+import { toTxUnspentOutput, fromTxUnspentOutput } from "@meshsdk/core-cst";
 import { Serialization } from "@cardano-sdk/core";
 
 export const utxosToCborMap = (utxos: UTxO[]): string => {
@@ -15,4 +15,27 @@ export const utxosToCborMap = (utxos: UTxO[]): string => {
     );
   }
   return cborWriter.encodeAsHex();
+};
+
+export const cborMapToUtxos = (cborMaps: string[]): UTxO[] => {
+  const utxos: UTxO[] = [];
+  for (const cborMap of cborMaps) {
+    const cborReader = new Serialization.CborReader(
+      Buffer.from(cborMap, "hex"),
+    );
+    const mapLength = cborReader.readStartMap();
+    if (!mapLength) {
+      throw new Error("Invalid CBOR map: expected a map of UTxOs");
+    }
+    for (let i = 0; i < mapLength; i++) {
+      const inputCbor = cborReader.readEncodedValue();
+      const outputCbor = cborReader.readEncodedValue();
+      const utxo = Serialization.TransactionUnspentOutput.fromCore([
+        Serialization.TransactionInput.fromCbor(inputCbor).toCore(),
+        Serialization.TransactionOutput.fromCbor(outputCbor).toCore(),
+      ]);
+      utxos.push(fromTxUnspentOutput(utxo));
+    }
+  }
+  return utxos;
 };
