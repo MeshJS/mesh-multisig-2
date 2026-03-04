@@ -6,13 +6,13 @@ import {
   ShareTokenMintBlueprint,
 } from "@/types/gcf-spend";
 import {
-  applyCborEncoding,
   conStr0,
   conStr1,
   MeshTxBuilder,
   OfflineFetcher,
   resolveScriptHash,
   UTxO,
+  resolveSlotNo,
 } from "@meshsdk/core";
 import { cborMapToUtxos, utxosToCborMap } from "@/utils/utxo";
 import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
@@ -120,9 +120,9 @@ describe("Crowdfund Contribute", async () => {
 
   it("should contribute to a crowdfund", async () => {
     const txBuilder = new MeshTxBuilder({
-      verbose: true,
       fetcher,
     });
+    const deadline = Date.now() + 1000000000;
     // Mint the auth token to the contributor's address
     const txHex = await txBuilder
       .txIn(
@@ -134,6 +134,7 @@ describe("Crowdfund Contribute", async () => {
       .mintRedeemerValue(conStr0([]), "JSON")
       .mintingScript(authTokenScript.cbor)
       .txOut(crowdfundScript.address, [
+        { unit: "lovelace", quantity: "2000000" },
         {
           unit: authTokenPolicyId,
           quantity: "1",
@@ -148,7 +149,7 @@ describe("Crowdfund Contribute", async () => {
             { int: 100000000000 },
             { int: 0 },
             conStr0([]),
-            { int: 156738330 },
+            { int: deadline },
             { int: 0 },
             { int: 0 },
           ]),
@@ -161,16 +162,68 @@ describe("Crowdfund Contribute", async () => {
 
     const signedTx = await wallet.signTxReturnFullTx(txHex);
 
-    const submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
+    let submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
     if (submitResult.isSuccess) {
-      console.log(
-        "Transaction submitted successfully. Tx ID:",
-        submitResult.txHash,
-      );
+      console.log("Transaction submitted successfully:", submitResult);
+
       const allUtxos = emulator.getAllUtxos();
       const utxoList = allUtxos.map((u) => Buffer.from(u).toString("hex"));
-      console.log(cborMapToUtxos(utxoList));
-      console.log("All UTxOs after transaction:", utxoList);
+      fetcher.addUTxOs(cborMapToUtxos(utxoList));
+
+      const txBuilder = new MeshTxBuilder({
+        fetcher,
+      });
+
+      const contributeAmount = 100000000000;
+      const txHex = await txBuilder
+        .txIn(submitResult.txHash!, 1)
+        .txInCollateral(submitResult.txHash!, 1)
+        .spendingPlutusScriptV3()
+        .txIn(submitResult.txHash!, 0)
+        .txInRedeemerValue(conStr0([]), "JSON")
+        .txInInlineDatumPresent()
+        .txInScript(crowdfundScript.cbor)
+        .txOut(crowdfundScript.address, [
+          {
+            unit: "lovelace",
+            quantity: (2000000 + contributeAmount).toString(),
+          },
+          {
+            unit: authTokenPolicyId,
+            quantity: "1",
+          },
+        ])
+        .txOutInlineDatumValue(
+          crowdfundScript.datum(
+            conStr0([
+              { bytes: "" },
+              { bytes: shareTokenScript.hash },
+              conStr0([
+                conStr1([{ bytes: crowdfundScript.hash }]),
+                conStr1([]),
+              ]),
+              { int: 100000000000 },
+              { int: contributeAmount },
+              conStr0([]),
+              { int: deadline },
+              { int: 0 },
+              { int: 0 },
+            ]),
+          ),
+          "JSON",
+        )
+        .mintPlutusScriptV3()
+        .mint(contributeAmount.toString(), shareTokenScript.hash, "")
+        .mintingScript(shareTokenScript.cbor)
+        .mintRedeemerValue(conStr0([]), "JSON")
+        .invalidHereafter(Number(resolveSlotNo("preprod")))
+        .changeAddress(address)
+        .complete();
+
+      const signedTx = await wallet.signTxReturnFullTx(txHex);
+
+      submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
+      console.log("Second transaction submit result:", submitResult);
     } else {
       console.log("Transaction failed to submit:", submitResult.error);
     }
