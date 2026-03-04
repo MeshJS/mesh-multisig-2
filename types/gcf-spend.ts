@@ -22,8 +22,8 @@ const version = "V3";
 const networkId = 0; // 0 for testnet; 1 for mainnet
 // Every spending validator would compile into an address with an staking key hash
 // Recommend replace with your own stake key / script hash
-const stakeKeyHash = "";
-const isStakeScriptCredential = false;
+const stakeKeyHash = "2ad24b622409f307c97385354b3464c7b4bb3ffab6dd50da64d2a60f";
+const isStakeScriptCredential = true;
 
 export class GcfAuthMintMintBlueprint extends MintingBlueprint {
   compiledCode: string;
