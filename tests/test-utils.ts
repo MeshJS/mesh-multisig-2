@@ -57,6 +57,17 @@ export const crowdfundScript = new GcfSpendSpendBlueprint([
   { int: govDeposit },
 ]);
 
+export const crowdfundScriptCustomProposal = (proposalCbor: string) =>
+  new GcfSpendSpendBlueprint([
+    { bytes: authTokenPolicyId },
+    { bytes: proposerKeyHash },
+    { bytes: proposalCbor },
+    { bytes: mockPoolIdHash },
+    { int: stakeRegisterDeposit },
+    { int: drepRegisterDeposit },
+    { int: govDeposit },
+  ]);
+
 export const shareTokenScript = new ShareTokenMintBlueprint([
   { bytes: authTokenPolicyId },
 ]);

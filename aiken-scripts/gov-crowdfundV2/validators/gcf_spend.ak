@@ -1,4 +1,3 @@
-use aiken/collection/list
 use cardano/address.{Script, VerificationKey}
 use cardano/assets.{Lovelace, PolicyId, lovelace_of}
 use cardano/certificate.{Registered}

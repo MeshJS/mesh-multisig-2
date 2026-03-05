@@ -27,6 +27,7 @@ import {
   stakeRegisterDeposit,
   totalDeposit,
 } from "./test-utils";
+import assert from "assert";
 
 describe("Crowdfund Contribute", async () => {
   const utxos: UTxO[] = [
@@ -133,9 +134,9 @@ describe("Crowdfund Contribute", async () => {
     const signedTx = await wallet.signTxReturnFullTx(txHex);
 
     let submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
+    console.log("First transaction submit result:", submitResult);
+    assert(submitResult.isSuccess);
     if (submitResult.isSuccess) {
-      console.log("Transaction submitted successfully:", submitResult);
-
       const allUtxos = emulator.getAllUtxos();
       const utxoList = allUtxos.map((u) => Buffer.from(u).toString("hex"));
       fetcher.addUTxOs(cborMapToUtxos(utxoList));
@@ -144,6 +145,7 @@ describe("Crowdfund Contribute", async () => {
         fetcher,
       });
 
+      // Contributing to crowdfund
       const contributeAmount = totalDeposit;
       const txHex = await txBuilder
         .txIn(submitResult.txHash!, 1)
@@ -204,6 +206,7 @@ describe("Crowdfund Contribute", async () => {
 
       submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
       console.log("Second transaction submit result:", submitResult);
+      assert(submitResult.isSuccess);
       if (submitResult.isSuccess) {
         const allUtxos = emulator.getAllUtxos();
         const utxoList = allUtxos.map((u) => Buffer.from(u).toString("hex"));
@@ -215,6 +218,7 @@ describe("Crowdfund Contribute", async () => {
           evaluator,
         });
 
+        // Register DRep, Stake, Delegate and vote
         const txHex = await txBuilder
           .txIn(submitResult.txHash!, 2)
           .txInCollateral(submitResult.txHash!, 2)
@@ -281,6 +285,7 @@ describe("Crowdfund Contribute", async () => {
           Buffer.from(signedTx, "hex"),
         );
         console.log("Final transaction submit result:", finalSubmitResult);
+        assert(finalSubmitResult.isSuccess);
       }
     } else {
       console.log("Transaction failed to submit:", submitResult.error);

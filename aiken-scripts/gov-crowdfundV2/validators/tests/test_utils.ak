@@ -1,7 +1,10 @@
 use aiken/cbor
 use aiken/collection/list
-use cardano/address.{Address, Inline, Script, from_script}
-use cardano/governance.{GovernanceActionId, ProposalProcedure, Vote, Voter}
+use aiken/collection/pairs
+use cardano/address.{Address, Inline, Script, VerificationKey, from_script}
+use cardano/governance.{
+  GovernanceActionId, ProposalProcedure, TreasuryWithdrawal, Vote, Voter,
+}
 use cardano/transaction.{Transaction}
 use gov.{VGovernanceAction, VNicePoll}
 use mocktail.{
@@ -133,4 +136,14 @@ pub fn add_vote(
         |> list.concat([vote]),
     }
   }
+}
+
+test mock_treasury_withdrawal_gov_action_id() {
+  let a =
+    TreasuryWithdrawal {
+      beneficiaries: [Pair(VerificationKey(mock_pub_key_hash(1)), 1000000)],
+      guardrails: None,
+    }
+  trace cbor.serialise(a)
+  True
 }
