@@ -2,6 +2,7 @@ use aiken/builtin
 use aiken/cbor
 use aiken/collection/list
 use aiken/collection/pairs.{get_first}
+use aiken/crypto.{blake2b_256}
 use aiken/option
 use cardano/address.{
   Address, Credential, Inline, Script, VerificationKey, from_script,
@@ -431,22 +432,22 @@ fn decode_beneficiaries_list_impl(
 }
 
 /// Compare parametrized gov_action (Plutus Data bytes) with tx proposal (GovernanceAction) structurally.
-pub fn compare_gov_action(agov: GovernanceAction, vgov: ByteArray) {
-  cbor.serialise(agov) == vgov
+pub fn compare_gov_action(gov: GovernanceAction, gov_action_hash: ByteArray) {
+  blake2b_256(cbor.serialise(gov)) == gov_action_hash
 }
 
 pub fn check_proposal_procedure(
   proposal_procedures: List<ProposalProcedure>,
   deposit: Lovelace,
   return_address: Credential,
-  vgovernance_action: ByteArray,
+  gov_action_hash: ByteArray,
 ) {
   list.count(
     proposal_procedures,
     fn(proposal_procedure) {
       proposal_procedure.deposit == deposit && proposal_procedure.return_address == return_address && compare_gov_action(
         proposal_procedure.governance_action,
-        vgovernance_action,
+        gov_action_hash,
       )
     },
   ) == 1

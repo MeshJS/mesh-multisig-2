@@ -1,3 +1,4 @@
+use aiken/cbor
 use cardano/address.{Script, VerificationKey}
 use cardano/assets.{Lovelace, PolicyId, lovelace_of}
 use cardano/certificate.{Registered}
@@ -25,7 +26,7 @@ use utils.{
 validator gCf_spend(
   auth_token: PolicyId,
   proposer_key_hash: ByteArray,
-  gov_action: ByteArray,
+  gov_action_hash: ByteArray,
   delegate_pool_id: ByteArray,
   // dynamic deposit parameters to avoid hardcoding values
   stake_register_deposit: Lovelace,
@@ -49,7 +50,6 @@ validator gCf_spend(
       votes,
       ..
     } = self
-
     expect Some(own_input) = find_input(inputs, input)
     expect Some(auth_input_datum) = datum_opt
 
@@ -288,7 +288,7 @@ validator gCf_spend(
                 proposal_procedures,
                 gov_deposit,
                 Script(stake_hash),
-                gov_action,
+                gov_action_hash,
               )
 
             lovelace_check? && output_datum_check? && is_value_clean? && proposal_check?

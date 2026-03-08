@@ -1,9 +1,11 @@
 use aiken/cbor
 use aiken/collection/list
 use aiken/collection/pairs
+use aiken/crypto.{blake2b_256}
 use cardano/address.{Address, Inline, Script, VerificationKey, from_script}
 use cardano/governance.{
-  GovernanceActionId, ProposalProcedure, TreasuryWithdrawal, Vote, Voter,
+  GovernanceActionId, NicePoll, ProposalProcedure, TreasuryWithdrawal, Vote,
+  Voter,
 }
 use cardano/transaction.{Transaction}
 use gov.{VGovernanceAction, VNicePoll}
@@ -142,8 +144,12 @@ test mock_treasury_withdrawal_gov_action_id() {
   let a =
     TreasuryWithdrawal {
       beneficiaries: [Pair(VerificationKey(mock_pub_key_hash(1)), 1000000)],
-      guardrails: None,
+      guardrails: Some(
+        #"b73c484b015973259b2e4a20ce247bf8df9aae916991c44c1bf9fb2e",
+      ),
     }
-  trace cbor.serialise(a)
+  trace blake2b_256(cbor.serialise(a))
+  let b = NicePoll
+  trace blake2b_256(cbor.serialise(b))
   True
 }

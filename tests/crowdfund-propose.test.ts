@@ -15,6 +15,8 @@ import {
   address,
   authTokenPolicyId,
   crowdfundScriptCustomProposal,
+  guardrailScriptCbor,
+  guardrailScriptHash,
   rewardAddress,
   shareTokenScript,
   stakeHash,
@@ -27,8 +29,8 @@ import { RewardAccount } from "@meshsdk/core-cst";
 describe("Crowdfund Propose", async () => {
   const deadline = Date.now() + 1000000000;
 
-  const utxosCustomProposal = (proposalCbor: string): UTxO[] => {
-    const crowdfundScript = crowdfundScriptCustomProposal(proposalCbor);
+  const utxosCustomProposal = (proposalHash: string): UTxO[] => {
+    const crowdfundScript = crowdfundScriptCustomProposal(proposalHash);
     return [
       {
         input: {
@@ -127,11 +129,10 @@ describe("Crowdfund Propose", async () => {
   ];
 
   it("should allow proposing a governance info action", async () => {
-    const infoActionProposalCbor = "d87f80";
-    const crowdfundScript = crowdfundScriptCustomProposal(
-      infoActionProposalCbor,
-    );
-    const utxos = utxosCustomProposal(infoActionProposalCbor);
+    const infoActionHash =
+      "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
+    const crowdfundScript = crowdfundScriptCustomProposal(infoActionHash);
+    const utxos = utxosCustomProposal(infoActionHash);
 
     const emulator = new Emulator(
       Buffer.from(utxosToCborMap(utxos), "hex"),
@@ -206,12 +207,12 @@ describe("Crowdfund Propose", async () => {
   });
 
   it("should allow proposing a governance treasury withdrawal action", async () => {
-    const treasuryWithdrawalProposalCbor =
-      "d87b9fa1d8799f581c438c6bf73d7145b3b343b866816801e59b5a2e0daf477e9040bb41b0ff1a000f4240d87a80ff";
+    const treasuryWithdrawalProposalHash =
+      "cf959e27d42f404e5779f936dd43540f5ba63a5dc233696021b196a780f4a30b";
     const crowdfundScript = crowdfundScriptCustomProposal(
-      treasuryWithdrawalProposalCbor,
+      treasuryWithdrawalProposalHash,
     );
-    const utxos = utxosCustomProposal(treasuryWithdrawalProposalCbor);
+    const utxos = utxosCustomProposal(treasuryWithdrawalProposalHash);
 
     const emulator = new Emulator(
       Buffer.from(utxosToCborMap(utxos), "hex"),
@@ -282,12 +283,16 @@ describe("Crowdfund Propose", async () => {
                 0,
               )]: String(1000000),
             },
+            policyHash: { bytes: guardrailScriptHash },
           },
           kind: "TreasuryWithdrawalsAction",
         },
         { anchorDataHash: hashDrepAnchor({}), anchorUrl: "" },
         rewardAddress,
       )
+      .proposalScript(guardrailScriptCbor, "V3")
+      .proposalRedeemerValue(conStr0([]), "JSON")
+      .setFee("2500000")
       .changeAddress(address)
       .complete();
 
