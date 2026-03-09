@@ -27,10 +27,22 @@ import assert from "assert";
 import { RewardAccount } from "@meshsdk/core-cst";
 
 describe("Crowdfund Propose", async () => {
+  const initialTxHash =
+    "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af";
+  const initialTxIndex = 1;
+  const authTokenPolicyIdValue = authTokenPolicyId(initialTxHash, initialTxIndex);
+  const shareTokenScriptValue = shareTokenScript(initialTxHash, initialTxIndex);
+  const stakeHashValue = stakeHash(initialTxHash, initialTxIndex);
+  const rewardAddressValue = rewardAddress(initialTxHash, initialTxIndex);
+
   const deadline = Date.now() + 1000000000;
 
   const utxosCustomProposal = (proposalHash: string): UTxO[] => {
-    const crowdfundScript = crowdfundScriptCustomProposal(proposalHash);
+    const crowdfundScript = crowdfundScriptCustomProposal(
+      proposalHash,
+      initialTxHash,
+      initialTxIndex,
+    );
     return [
       {
         input: {
@@ -69,8 +81,8 @@ describe("Crowdfund Propose", async () => {
           plutusData: serializeData(
             crowdfundScript.datum(
               conStr0([
-                { bytes: stakeHash },
-                { bytes: shareTokenScript.hash },
+                { bytes: stakeHashValue },
+                { bytes: shareTokenScriptValue.hash },
                 conStr0([
                   conStr1([{ bytes: crowdfundScript.hash }]),
                   conStr1([]),
@@ -131,7 +143,11 @@ describe("Crowdfund Propose", async () => {
   it("should allow proposing a governance info action", async () => {
     const infoActionHash =
       "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
-    const crowdfundScript = crowdfundScriptCustomProposal(infoActionHash);
+    const crowdfundScript = crowdfundScriptCustomProposal(
+      infoActionHash,
+      initialTxHash,
+      initialTxIndex,
+    );
     const utxos = utxosCustomProposal(infoActionHash);
 
     const emulator = new Emulator(
@@ -176,15 +192,15 @@ describe("Crowdfund Propose", async () => {
           quantity: (2000000).toString(),
         },
         {
-          unit: authTokenPolicyId,
+          unit: authTokenPolicyIdValue,
           quantity: "1",
         },
       ])
       .txOutInlineDatumValue(
         crowdfundScript.datum(
           conStr1([
-            { bytes: stakeHash },
-            { bytes: shareTokenScript.hash },
+            { bytes: stakeHashValue },
+            { bytes: shareTokenScriptValue.hash },
             { int: 100502000000 },
             { int: deadline },
           ]),
@@ -194,7 +210,7 @@ describe("Crowdfund Propose", async () => {
       .proposal(
         { action: {}, kind: "InfoAction" },
         { anchorDataHash: hashDrepAnchor({}), anchorUrl: "" },
-        rewardAddress,
+        rewardAddressValue,
       )
       .changeAddress(address)
       .complete();
@@ -211,6 +227,8 @@ describe("Crowdfund Propose", async () => {
       "cf959e27d42f404e5779f936dd43540f5ba63a5dc233696021b196a780f4a30b";
     const crowdfundScript = crowdfundScriptCustomProposal(
       treasuryWithdrawalProposalHash,
+      initialTxHash,
+      initialTxIndex,
     );
     const utxos = utxosCustomProposal(treasuryWithdrawalProposalHash);
 
@@ -256,15 +274,15 @@ describe("Crowdfund Propose", async () => {
           quantity: (2000000).toString(),
         },
         {
-          unit: authTokenPolicyId,
+          unit: authTokenPolicyIdValue,
           quantity: "1",
         },
       ])
       .txOutInlineDatumValue(
         crowdfundScript.datum(
           conStr1([
-            { bytes: stakeHash },
-            { bytes: shareTokenScript.hash },
+            { bytes: stakeHashValue },
+            { bytes: shareTokenScriptValue.hash },
             { int: 100502000000 },
             { int: deadline },
           ]),
@@ -288,7 +306,7 @@ describe("Crowdfund Propose", async () => {
           kind: "TreasuryWithdrawalsAction",
         },
         { anchorDataHash: hashDrepAnchor({}), anchorUrl: "" },
-        rewardAddress,
+        rewardAddressValue,
       )
       .proposalScript(guardrailScriptCbor, "V3")
       .proposalRedeemerValue(conStr0([]), "JSON")

@@ -30,12 +30,29 @@ import {
 import assert from "assert";
 
 describe("Crowdfund Contribute", async () => {
+  const initialTxHash =
+    "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af";
+  const initialTxIndex = 1;
+  const authTokenPolicyIdValue = authTokenPolicyId(
+    initialTxHash,
+    initialTxIndex,
+  );
+  const authTokenScriptValue = authTokenScript(initialTxHash, initialTxIndex);
+  const crowdfundScriptValue = crowdfundScript(initialTxHash, initialTxIndex);
+  const crowdfundStakeScriptValue = crowdfundStakeScript(
+    initialTxHash,
+    initialTxIndex,
+  );
+  const shareTokenScriptValue = shareTokenScript(initialTxHash, initialTxIndex);
+  const stakeHashValue = stakeHash(initialTxHash, initialTxIndex);
+  const rewardAddressValue = rewardAddress(initialTxHash, initialTxIndex);
+  const drepIdValue = drepId(initialTxHash, initialTxIndex);
+
   const utxos: UTxO[] = [
     {
       input: {
-        txHash:
-          "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af",
-        outputIndex: 1,
+        txHash: initialTxHash,
+        outputIndex: initialTxIndex,
       },
       output: {
         address: address,
@@ -96,27 +113,27 @@ describe("Crowdfund Contribute", async () => {
     const deadline = Date.now() + 1000000000;
     // Mint the auth token to the contributor's address
     const txHex = await txBuilder
-      .txIn(
-        "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af",
-        1,
-      )
+      .txIn(initialTxHash, initialTxIndex)
       .mintPlutusScriptV3()
-      .mint("1", authTokenPolicyId, "")
+      .mint("1", authTokenPolicyIdValue, "")
       .mintRedeemerValue(conStr0([]), "JSON")
-      .mintingScript(authTokenScript.cbor)
-      .txOut(crowdfundScript.address, [
+      .mintingScript(authTokenScriptValue.cbor)
+      .txOut(crowdfundScriptValue.address, [
         { unit: "lovelace", quantity: "2000000" },
         {
-          unit: authTokenPolicyId,
+          unit: authTokenPolicyIdValue,
           quantity: "1",
         },
       ])
       .txOutInlineDatumValue(
-        crowdfundScript.datum(
+        crowdfundScriptValue.datum(
           conStr0([
-            { bytes: stakeHash },
-            { bytes: shareTokenScript.hash },
-            conStr0([conStr1([{ bytes: crowdfundScript.hash }]), conStr1([])]),
+            { bytes: stakeHashValue },
+            { bytes: shareTokenScriptValue.hash },
+            conStr0([
+              conStr1([{ bytes: crowdfundScriptValue.hash }]),
+              conStr1([]),
+            ]),
             { int: totalDeposit },
             { int: 0 },
             conStr0([]),
@@ -154,24 +171,24 @@ describe("Crowdfund Contribute", async () => {
         .txIn(submitResult.txHash!, 0)
         .txInRedeemerValue(conStr0([]), "JSON")
         .txInInlineDatumPresent()
-        .txInScript(crowdfundScript.cbor)
-        .txOut(crowdfundScript.address, [
+        .txInScript(crowdfundScriptValue.cbor)
+        .txOut(crowdfundScriptValue.address, [
           {
             unit: "lovelace",
             quantity: (2000000 + contributeAmount).toString(),
           },
           {
-            unit: authTokenPolicyId,
+            unit: authTokenPolicyIdValue,
             quantity: "1",
           },
         ])
         .txOutInlineDatumValue(
-          crowdfundScript.datum(
+          crowdfundScriptValue.datum(
             conStr0([
-              { bytes: stakeHash },
-              { bytes: shareTokenScript.hash },
+              { bytes: stakeHashValue },
+              { bytes: shareTokenScriptValue.hash },
               conStr0([
-                conStr1([{ bytes: crowdfundScript.hash }]),
+                conStr1([{ bytes: crowdfundScriptValue.hash }]),
                 conStr1([]),
               ]),
               { int: totalDeposit },
@@ -185,8 +202,8 @@ describe("Crowdfund Contribute", async () => {
           "JSON",
         )
         .mintPlutusScriptV3()
-        .mint(contributeAmount.toString(), shareTokenScript.hash, "")
-        .mintingScript(shareTokenScript.cbor)
+        .mint(contributeAmount.toString(), shareTokenScriptValue.hash, "")
+        .mintingScript(shareTokenScriptValue.cbor)
         .mintRedeemerValue(conStr0([]), "JSON")
         .txOut(address, [
           {
@@ -194,7 +211,7 @@ describe("Crowdfund Contribute", async () => {
             quantity: "2000000",
           },
           {
-            unit: `${shareTokenScript.hash}`,
+            unit: `${shareTokenScriptValue.hash}`,
             quantity: contributeAmount.toString(),
           },
         ])
@@ -226,8 +243,8 @@ describe("Crowdfund Contribute", async () => {
           .txIn(submitResult.txHash!, 0)
           .txInRedeemerValue(conStr(2, []), "JSON")
           .txInInlineDatumPresent()
-          .txInScript(crowdfundScript.cbor)
-          .txOut(crowdfundScript.address, [
+          .txInScript(crowdfundScriptValue.cbor)
+          .txOut(crowdfundScriptValue.address, [
             {
               unit: "lovelace",
               quantity: (
@@ -238,17 +255,17 @@ describe("Crowdfund Contribute", async () => {
               ).toString(),
             },
             {
-              unit: authTokenPolicyId,
+              unit: authTokenPolicyIdValue,
               quantity: "1",
             },
           ])
           .txOutInlineDatumValue(
-            crowdfundScript.datum(
+            crowdfundScriptValue.datum(
               conStr0([
-                { bytes: stakeHash },
-                { bytes: shareTokenScript.hash },
+                { bytes: stakeHashValue },
+                { bytes: shareTokenScriptValue.hash },
                 conStr0([
-                  conStr1([{ bytes: crowdfundScript.hash }]),
+                  conStr1([{ bytes: crowdfundScriptValue.hash }]),
                   conStr1([]),
                 ]),
                 { int: totalDeposit },
@@ -261,20 +278,20 @@ describe("Crowdfund Contribute", async () => {
             ),
             "JSON",
           )
-          .registerStakeCertificate(rewardAddress)
-          .drepRegistrationCertificate(drepId)
-          .certificateScript(crowdfundStakeScript.cbor, "V3")
+          .registerStakeCertificate(rewardAddressValue)
+          .drepRegistrationCertificate(drepIdValue)
+          .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
           .certificateRedeemerValue(conStr0([]), "JSON")
           .voteDelegationCertificate(
             {
-              dRepId: drepId,
+              dRepId: drepIdValue,
             },
-            rewardAddress,
+            rewardAddressValue,
           )
-          .certificateScript(crowdfundStakeScript.cbor, "V3")
+          .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
           .certificateRedeemerValue(conStr0([]), "JSON")
-          .delegateStakeCertificate(rewardAddress, mockPoolId)
-          .certificateScript(crowdfundStakeScript.cbor, "V3")
+          .delegateStakeCertificate(rewardAddressValue, mockPoolId)
+          .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
           .certificateRedeemerValue(conStr0([]), "JSON")
           .changeAddress(address)
           .complete();

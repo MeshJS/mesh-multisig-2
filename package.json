@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test --test-force-exit **/*.test.ts"
+    "test": "node --import tsx --test --test-force-exit"
   },
   "dependencies": {
     "@cardano-sdk/core": "^0.46.12",
