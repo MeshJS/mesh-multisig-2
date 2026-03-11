@@ -24,72 +24,84 @@ export const govDeposit = 100000000000;
 export const totalDeposit =
   stakeRegisterDeposit + drepRegisterDeposit + govDeposit;
 
-export const authTokenScript = (txHash: string, txIndex: number) =>
-  new GcfAuthMintMintBlueprint([
-    conStr0([
+export class CrowdfundTestUtils {
+  constructor(
+    private readonly txHash: string,
+    private readonly txIndex: number,
+  ) {}
+
+  authTokenScript() {
+    return new GcfAuthMintMintBlueprint([
+      conStr0([
+        {
+          bytes: this.txHash,
+        },
+        { int: this.txIndex },
+      ]),
+    ]);
+  }
+
+  authTokenPolicyId() {
+    return resolveScriptHash(this.authTokenScript().cbor, "V3");
+  }
+
+  crowdfundStakeScript() {
+    return new GcfStakePublishBlueprint([
       {
-        bytes: txHash,
+        bytes: this.authTokenPolicyId(),
       },
-      { int: txIndex },
-    ]),
-  ]);
+    ]);
+  }
 
-export const authTokenPolicyId = (txHash: string, txIndex: number) =>
-  resolveScriptHash(authTokenScript(txHash, txIndex).cbor, "V3");
+  crowdfundScript() {
+    return new GcfSpendSpendBlueprint([
+      { bytes: this.authTokenPolicyId() },
+      { bytes: proposerKeyHash },
+      { bytes: infoActionCbor },
+      { bytes: mockPoolIdHash },
+      { int: stakeRegisterDeposit },
+      { int: drepRegisterDeposit },
+      { int: govDeposit },
+    ]);
+  }
 
-export const crowdfundStakeScript = (txHash: string, txIndex: number) =>
-  new GcfStakePublishBlueprint([
-    {
-      bytes: authTokenPolicyId(txHash, txIndex),
-    },
-  ]);
+  crowdfundScriptCustomProposal(proposalCbor: string) {
+    return new GcfSpendSpendBlueprint([
+      { bytes: this.authTokenPolicyId() },
+      { bytes: proposerKeyHash },
+      { bytes: proposalCbor },
+      { bytes: mockPoolIdHash },
+      { int: stakeRegisterDeposit },
+      { int: drepRegisterDeposit },
+      { int: govDeposit },
+    ]);
+  }
 
-export const crowdfundScript = (txHash: string, txIndex: number) =>
-  new GcfSpendSpendBlueprint([
-    { bytes: authTokenPolicyId(txHash, txIndex) },
-    { bytes: proposerKeyHash },
-    { bytes: infoActionCbor },
-    { bytes: mockPoolIdHash },
-    { int: stakeRegisterDeposit },
-    { int: drepRegisterDeposit },
-    { int: govDeposit },
-  ]);
+  shareTokenScript() {
+    return new ShareTokenMintBlueprint([{ bytes: this.authTokenPolicyId() }]);
+  }
 
-export const crowdfundScriptCustomProposal = (
-  proposalCbor: string,
-  txHash: string,
-  txIndex: number,
-) =>
-  new GcfSpendSpendBlueprint([
-    { bytes: authTokenPolicyId(txHash, txIndex) },
-    { bytes: proposerKeyHash },
-    { bytes: proposalCbor },
-    { bytes: mockPoolIdHash },
-    { int: stakeRegisterDeposit },
-    { int: drepRegisterDeposit },
-    { int: govDeposit },
-  ]);
+  stakeHash() {
+    return this.crowdfundStakeScript().hash;
+  }
 
-export const shareTokenScript = (txHash: string, txIndex: number) =>
-  new ShareTokenMintBlueprint([{ bytes: authTokenPolicyId(txHash, txIndex) }]);
+  rewardAddress() {
+    return RewardAccount.fromCredential(
+      {
+        hash: this.stakeHash(),
+        type: CredentialType.ScriptHash,
+      },
+      0,
+    );
+  }
+
+  drepId() {
+    return DRepID.cip129FromCredential({
+      hash: this.stakeHash(),
+      type: CredentialType.ScriptHash,
+    });
+  }
+}
 
 export const address =
   "addr_test1qr08qlxewpc7af2f7gwg04emu4w3334sfqp2r7xqeh4fuxcj8mhzkl4h6ykdnj7az529d4qe0ysyygle3w2h264rj5ns84xnl5";
-
-export const stakeHash = (txHash: string, txIndex: number) =>
-  crowdfundStakeScript(txHash, txIndex).hash;
-
-export const rewardAddress = (txHash: string, txIndex: number) =>
-  RewardAccount.fromCredential(
-    {
-      hash: stakeHash(txHash, txIndex),
-      type: CredentialType.ScriptHash,
-    },
-    0,
-  );
-
-export const drepId = (txHash: string, txIndex: number) =>
-  DRepID.cip129FromCredential({
-    hash: stakeHash(txHash, txIndex),
-    type: CredentialType.ScriptHash,
-  });

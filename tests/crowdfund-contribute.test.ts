@@ -14,16 +14,9 @@ import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { OfflineEvaluator } from "@meshsdk/core-csl";
 import {
   address,
-  authTokenPolicyId,
-  authTokenScript,
-  crowdfundScript,
-  crowdfundStakeScript,
-  drepId,
+  CrowdfundTestUtils,
   drepRegisterDeposit,
   mockPoolId,
-  rewardAddress,
-  shareTokenScript,
-  stakeHash,
   stakeRegisterDeposit,
   totalDeposit,
 } from "./test-utils";
@@ -33,20 +26,15 @@ describe("Crowdfund Contribute", async () => {
   const initialTxHash =
     "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af";
   const initialTxIndex = 1;
-  const authTokenPolicyIdValue = authTokenPolicyId(
-    initialTxHash,
-    initialTxIndex,
-  );
-  const authTokenScriptValue = authTokenScript(initialTxHash, initialTxIndex);
-  const crowdfundScriptValue = crowdfundScript(initialTxHash, initialTxIndex);
-  const crowdfundStakeScriptValue = crowdfundStakeScript(
-    initialTxHash,
-    initialTxIndex,
-  );
-  const shareTokenScriptValue = shareTokenScript(initialTxHash, initialTxIndex);
-  const stakeHashValue = stakeHash(initialTxHash, initialTxIndex);
-  const rewardAddressValue = rewardAddress(initialTxHash, initialTxIndex);
-  const drepIdValue = drepId(initialTxHash, initialTxIndex);
+  const testUtils = new CrowdfundTestUtils(initialTxHash, initialTxIndex);
+  const authTokenPolicyIdValue = testUtils.authTokenPolicyId();
+  const authTokenScriptValue = testUtils.authTokenScript();
+  const crowdfundScriptValue = testUtils.crowdfundScript();
+  const crowdfundStakeScriptValue = testUtils.crowdfundStakeScript();
+  const shareTokenScriptValue = testUtils.shareTokenScript();
+  const stakeHashValue = testUtils.stakeHash();
+  const rewardAddressValue = testUtils.rewardAddress();
+  const drepIdValue = testUtils.drepId();
 
   const utxos: UTxO[] = [
     {

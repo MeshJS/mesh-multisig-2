@@ -13,13 +13,9 @@ import { describe, it } from "node:test";
 import { Emulator, SlotConfig } from "scalus";
 import {
   address,
-  authTokenPolicyId,
-  crowdfundScriptCustomProposal,
+  CrowdfundTestUtils,
   guardrailScriptCbor,
   guardrailScriptHash,
-  rewardAddress,
-  shareTokenScript,
-  stakeHash,
   totalDeposit,
 } from "./test-utils";
 import { MeshCardanoHeadlessWallet, AddressType } from "@meshsdk/wallet";
@@ -30,19 +26,17 @@ describe("Crowdfund Propose", async () => {
   const initialTxHash =
     "886cd5fcb80ed1fd01d3c4eb409035295fc54ee9c37e71f100af9e1282b035af";
   const initialTxIndex = 1;
-  const authTokenPolicyIdValue = authTokenPolicyId(initialTxHash, initialTxIndex);
-  const shareTokenScriptValue = shareTokenScript(initialTxHash, initialTxIndex);
-  const stakeHashValue = stakeHash(initialTxHash, initialTxIndex);
-  const rewardAddressValue = rewardAddress(initialTxHash, initialTxIndex);
+  const testUtils = new CrowdfundTestUtils(initialTxHash, initialTxIndex);
+  const authTokenPolicyIdValue = testUtils.authTokenPolicyId();
+  const shareTokenScriptValue = testUtils.shareTokenScript();
+  const stakeHashValue = testUtils.stakeHash();
+  const rewardAddressValue = testUtils.rewardAddress();
 
   const deadline = Date.now() + 1000000000;
 
   const utxosCustomProposal = (proposalHash: string): UTxO[] => {
-    const crowdfundScript = crowdfundScriptCustomProposal(
-      proposalHash,
-      initialTxHash,
-      initialTxIndex,
-    );
+    const crowdfundScript =
+      testUtils.crowdfundScriptCustomProposal(proposalHash);
     return [
       {
         input: {
@@ -143,11 +137,8 @@ describe("Crowdfund Propose", async () => {
   it("should allow proposing a governance info action", async () => {
     const infoActionHash =
       "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
-    const crowdfundScript = crowdfundScriptCustomProposal(
-      infoActionHash,
-      initialTxHash,
-      initialTxIndex,
-    );
+    const crowdfundScript =
+      testUtils.crowdfundScriptCustomProposal(infoActionHash);
     const utxos = utxosCustomProposal(infoActionHash);
 
     const emulator = new Emulator(
@@ -225,10 +216,8 @@ describe("Crowdfund Propose", async () => {
   it("should allow proposing a governance treasury withdrawal action", async () => {
     const treasuryWithdrawalProposalHash =
       "cf959e27d42f404e5779f936dd43540f5ba63a5dc233696021b196a780f4a30b";
-    const crowdfundScript = crowdfundScriptCustomProposal(
+    const crowdfundScript = testUtils.crowdfundScriptCustomProposal(
       treasuryWithdrawalProposalHash,
-      initialTxHash,
-      initialTxIndex,
     );
     const utxos = utxosCustomProposal(treasuryWithdrawalProposalHash);
 
