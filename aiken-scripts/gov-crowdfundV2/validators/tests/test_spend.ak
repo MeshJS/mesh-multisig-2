@@ -1,4 +1,3 @@
-use cardano/address.{Script}
 use cardano/assets.{add, from_lovelace}
 use cardano/certificate.{
   DelegateBlockProduction, DelegateCredential, DelegateVote, RegisterCredential,
@@ -16,7 +15,7 @@ use tests/test_utils.{
   mock_delegate_pool_id, mock_drep_register_deposit, mock_fundraise_target,
   mock_funds_controlled, mock_gov_action, mock_gov_action_period,
   mock_gov_address, mock_gov_deposit, mock_proposer_key_hash, mock_share_token,
-  mock_stake_hash, mock_stake_register_deposit,
+  mock_stake_cred, mock_stake_hash, mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, Proposed, RegisterCerts}
 
@@ -51,12 +50,11 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
 
   let input_value =
     from_lovelace(mock_funds_controlled)
-      |> add(mock_stake_hash, "", 1)
       |> add(mock_auth_token, "", 1)
 
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -84,7 +82,7 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
   let output_datum: CrowdfundGovDatum =
     if is_output_datum_correct {
       Crowdfund {
-        stake_hash: mock_stake_hash,
+        stake_cred: mock_stake_cred,
         share_token: mock_share_token,
         crowdfund_address: mock_crowdfund_address,
         fundraise_target: mock_fundraise_target,
@@ -96,7 +94,7 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
       }
     } else {
       Crowdfund {
-        stake_hash: mock_stake_hash,
+        stake_cred: mock_stake_cred,
         share_token: mock_share_token,
         crowdfund_address: mock_crowdfund_address,
         fundraise_target: mock_fundraise_target,
@@ -135,22 +133,19 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
     |> complete()
     |> add_certificate(
         is_stake_cert_register,
-        RegisterCredential {
-          credential: Script(mock_stake_hash),
-          deposit: Never,
-        },
+        RegisterCredential { credential: mock_stake_cred, deposit: Never },
       )
     |> add_certificate(
         is_drep_cert_register,
         RegisterDelegateRepresentative {
-          delegate_representative: Script(mock_stake_hash),
+          delegate_representative: mock_stake_cred,
           deposit: drep_deposit,
         },
       )
     |> add_certificate(
         is_stake_delegated,
         DelegateCredential {
-          credential: Script(mock_stake_hash),
+          credential: mock_stake_cred,
           delegate: DelegateBlockProduction {
             stake_pool: mock_delegate_pool_id,
           },
@@ -159,9 +154,9 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
     |> add_certificate(
         is_vote_delegated,
         DelegateCredential {
-          credential: Script(mock_stake_hash),
+          credential: mock_stake_cred,
           delegate: DelegateVote {
-            delegate_representative: Registered(Script(mock_stake_hash)),
+            delegate_representative: Registered(mock_stake_cred),
           },
         },
       )
@@ -169,7 +164,7 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
         is_gov_proposed,
         ProposalProcedure {
           deposit: mock_gov_deposit,
-          return_address: Script(mock_stake_hash),
+          return_address: mock_stake_cred,
           governance_action: NicePoll,
         },
       )
@@ -178,7 +173,7 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
 test s1_spend_success_reg_cert() {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -223,7 +218,7 @@ test s1_spend_success_reg_cert() {
 test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
   let input_datum: CrowdfundGovDatum =
     Proposed {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       funds_controlled: mock_funds_controlled,
       deadline: mock_deadline + mock_gov_action_period,
@@ -263,7 +258,7 @@ test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
 test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -307,7 +302,7 @@ test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
 
 fn mock_crowdfund_datum_for_tests() -> CrowdfundGovDatum {
   Crowdfund {
-    stake_hash: mock_stake_hash,
+    stake_cred: mock_stake_cred,
     share_token: mock_share_token,
     crowdfund_address: mock_crowdfund_address,
     fundraise_target: mock_fundraise_target,

@@ -16,7 +16,7 @@ use tests/test_utils.{
   mock_delegate_pool_id, mock_drep_register_deposit, mock_fundraise_target,
   mock_funds_controlled, mock_gov_action, mock_gov_action_period,
   mock_gov_address, mock_gov_address_with_stake, mock_gov_deposit,
-  mock_proposer_key_hash, mock_share_token, mock_stake_hash,
+  mock_proposer_key_hash, mock_share_token, mock_stake_cred,
   mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, RegisterCerts}
@@ -25,12 +25,11 @@ use types.{Crowdfund, CrowdfundGovDatum, RegisterCerts}
 fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
   let input_value =
     from_lovelace(mock_funds_controlled)
-      |> add(mock_stake_hash, "", 1)
       |> add(mock_auth_token, "", 1)
 
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -51,7 +50,7 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
   // RegisterCerts keeps the same Crowdfund datum (no state transition, just deducts deposits)
   let output_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -70,22 +69,19 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
     |> complete()
     |> add_certificate(
         True,
-        RegisterCredential {
-          credential: Script(mock_stake_hash),
-          deposit: Never,
-        },
+        RegisterCredential { credential: mock_stake_cred, deposit: Never },
       )
     |> add_certificate(
         True,
         RegisterDelegateRepresentative {
-          delegate_representative: Script(mock_stake_hash),
+          delegate_representative: mock_stake_cred,
           deposit: mock_drep_register_deposit,
         },
       )
     |> add_certificate(
         True,
         DelegateCredential {
-          credential: Script(mock_stake_hash),
+          credential: mock_stake_cred,
           delegate: DelegateBlockProduction {
             stake_pool: mock_delegate_pool_id,
           },
@@ -94,9 +90,9 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
     |> add_certificate(
         True,
         DelegateCredential {
-          credential: Script(mock_stake_hash),
+          credential: mock_stake_cred,
           delegate: DelegateVote {
-            delegate_representative: Registered(Script(mock_stake_hash)),
+            delegate_representative: Registered(mock_stake_cred),
           },
         },
       )
@@ -104,7 +100,7 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
         include_proposal,
         ProposalProcedure {
           deposit: mock_gov_deposit,
-          return_address: Script(mock_stake_hash),
+          return_address: mock_stake_cred,
           governance_action: NicePoll,
         },
       )
@@ -114,7 +110,7 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
 test register_certs_with_crowdfund_output() {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -145,7 +141,7 @@ test register_certs_with_crowdfund_output() {
 test register_certs_without_proposal() {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -177,7 +173,7 @@ test register_certs_without_proposal() {
 test register_certs_with_proposal_memory_test() {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -208,7 +204,7 @@ test register_certs_with_proposal_memory_test() {
 test register_certs_without_proposal_memory_test() {
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: mock_stake_hash,
+      stake_cred: mock_stake_cred,
       share_token: mock_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: mock_fundraise_target,
@@ -240,8 +236,8 @@ test register_certs_without_proposal_memory_test() {
 // Output: {"constructor":1,"fields":["0xdba06cdc58ba2882f0c4106f072504d40240eb11c1c7b2a9a771d307",...]}
 test register_certs_realistic_datum_values() {
   // Using realistic values from user's error report
-  let realistic_stake_hash =
-    #"dba06cdc58ba2882f0c4106f072504d40240eb11c1c7b2a9a771d307"
+  let realistic_stake_cred =
+    Script(#"dba06cdc58ba2882f0c4106f072504d40240eb11c1c7b2a9a771d307")
   let realistic_share_token =
     #"c1c26c43ae8da6e7ae4f8336a230e496eab14d7e664cd0a0c19d7402"
   let realistic_funds = 100502000000
@@ -249,7 +245,7 @@ test register_certs_realistic_datum_values() {
 
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: realistic_stake_hash,
+      stake_cred: realistic_stake_cred,
       share_token: realistic_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: realistic_funds,
@@ -262,12 +258,10 @@ test register_certs_realistic_datum_values() {
 
   let input_value =
     from_lovelace(realistic_funds)
-      |> add(realistic_stake_hash, "", 1)
       |> add(mock_auth_token, "", 1)
 
   // RegisterCerts deducts only stake + drep (no gov_deposit); output value must be clean (lovelace + auth only)
-  let deposits =
-    mock_stake_register_deposit + mock_drep_register_deposit
+  let deposits = mock_stake_register_deposit + mock_drep_register_deposit
   let output_value =
     from_lovelace(realistic_funds - deposits)
       |> add(mock_auth_token, "", 1)
@@ -275,7 +269,7 @@ test register_certs_realistic_datum_values() {
   // RegisterCerts keeps the same Crowdfund datum
   let output_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: realistic_stake_hash,
+      stake_cred: realistic_stake_cred,
       share_token: realistic_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: realistic_funds,
@@ -286,8 +280,8 @@ test register_certs_realistic_datum_values() {
       min_charge: 0,
     }
 
-  // Use address whose stake credential matches datum.stake_hash so credential_matches_datum passes
-  let realistic_address = mock_gov_address_with_stake(realistic_stake_hash)
+  // Use address whose stake credential matches datum.stake_cred so credential_matches_datum passes
+  let realistic_address = mock_gov_address_with_stake(realistic_stake_cred)
 
   let tx =
     mocktail_tx()
@@ -299,21 +293,21 @@ test register_certs_realistic_datum_values() {
       |> add_certificate(
           True,
           RegisterCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             deposit: Never,
           },
         )
       |> add_certificate(
           True,
           RegisterDelegateRepresentative {
-            delegate_representative: Script(realistic_stake_hash),
+            delegate_representative: realistic_stake_cred,
             deposit: mock_drep_register_deposit,
           },
         )
       |> add_certificate(
           True,
           DelegateCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             delegate: DelegateBlockProduction {
               stake_pool: mock_delegate_pool_id,
             },
@@ -322,9 +316,9 @@ test register_certs_realistic_datum_values() {
       |> add_certificate(
           True,
           DelegateCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             delegate: DelegateVote {
-              delegate_representative: Registered(Script(realistic_stake_hash)),
+              delegate_representative: Registered(realistic_stake_cred),
             },
           },
         )
@@ -332,7 +326,7 @@ test register_certs_realistic_datum_values() {
           True,
           ProposalProcedure {
             deposit: mock_gov_deposit,
-            return_address: Script(realistic_stake_hash),
+            return_address: realistic_stake_cred,
             governance_action: NicePoll,
           },
         )
@@ -354,8 +348,8 @@ test register_certs_realistic_datum_values() {
 
 // Test with realistic values to measure actual memory usage
 test register_certs_realistic_memory_test() {
-  let realistic_stake_hash =
-    #"dba06cdc58ba2882f0c4106f072504d40240eb11c1c7b2a9a771d307"
+  let realistic_stake_cred =
+    Script(#"dba06cdc58ba2882f0c4106f072504d40240eb11c1c7b2a9a771d307")
   let realistic_share_token =
     #"c1c26c43ae8da6e7ae4f8336a230e496eab14d7e664cd0a0c19d7402"
   let realistic_funds = 100502000000
@@ -363,7 +357,7 @@ test register_certs_realistic_memory_test() {
 
   let input_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: realistic_stake_hash,
+      stake_cred: realistic_stake_cred,
       share_token: realistic_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: realistic_funds,
@@ -376,11 +370,9 @@ test register_certs_realistic_memory_test() {
 
   let input_value =
     from_lovelace(realistic_funds)
-      |> add(realistic_stake_hash, "", 1)
       |> add(mock_auth_token, "", 1)
 
-  let deposits =
-    mock_stake_register_deposit + mock_drep_register_deposit
+  let deposits = mock_stake_register_deposit + mock_drep_register_deposit
   let output_value =
     from_lovelace(realistic_funds - deposits)
       |> add(mock_auth_token, "", 1)
@@ -388,7 +380,7 @@ test register_certs_realistic_memory_test() {
   // RegisterCerts keeps the same Crowdfund datum
   let output_datum: CrowdfundGovDatum =
     Crowdfund {
-      stake_hash: realistic_stake_hash,
+      stake_cred: realistic_stake_cred,
       share_token: realistic_share_token,
       crowdfund_address: mock_crowdfund_address,
       fundraise_target: realistic_funds,
@@ -399,7 +391,7 @@ test register_certs_realistic_memory_test() {
       min_charge: 0,
     }
 
-  let realistic_address = mock_gov_address_with_stake(realistic_stake_hash)
+  let realistic_address = mock_gov_address_with_stake(realistic_stake_cred)
 
   let tx =
     mocktail_tx()
@@ -411,21 +403,21 @@ test register_certs_realistic_memory_test() {
       |> add_certificate(
           True,
           RegisterCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             deposit: Never,
           },
         )
       |> add_certificate(
           True,
           RegisterDelegateRepresentative {
-            delegate_representative: Script(realistic_stake_hash),
+            delegate_representative: realistic_stake_cred,
             deposit: mock_drep_register_deposit,
           },
         )
       |> add_certificate(
           True,
           DelegateCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             delegate: DelegateBlockProduction {
               stake_pool: mock_delegate_pool_id,
             },
@@ -434,9 +426,9 @@ test register_certs_realistic_memory_test() {
       |> add_certificate(
           True,
           DelegateCredential {
-            credential: Script(realistic_stake_hash),
+            credential: realistic_stake_cred,
             delegate: DelegateVote {
-              delegate_representative: Registered(Script(realistic_stake_hash)),
+              delegate_representative: Registered(realistic_stake_cred),
             },
           },
         )
@@ -444,7 +436,7 @@ test register_certs_realistic_memory_test() {
           True,
           ProposalProcedure {
             deposit: mock_gov_deposit,
-            return_address: Script(realistic_stake_hash),
+            return_address: realistic_stake_cred,
             governance_action: NicePoll,
           },
         )

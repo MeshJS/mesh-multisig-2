@@ -116,7 +116,7 @@ describe("Crowdfund Contribute", async () => {
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
           conStr0([
-            { bytes: stakeHashValue },
+            conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             conStr0([
               conStr1([{ bytes: crowdfundScriptValue.hash }]),
@@ -173,7 +173,7 @@ describe("Crowdfund Contribute", async () => {
         .txOutInlineDatumValue(
           crowdfundScriptValue.datum(
             conStr0([
-              { bytes: stakeHashValue },
+              conStr1([{ bytes: stakeHashValue }]),
               { bytes: shareTokenScriptValue.hash },
               conStr0([
                 conStr1([{ bytes: crowdfundScriptValue.hash }]),
@@ -250,7 +250,7 @@ describe("Crowdfund Contribute", async () => {
           .txOutInlineDatumValue(
             crowdfundScriptValue.datum(
               conStr0([
-                { bytes: stakeHashValue },
+                conStr1([{ bytes: stakeHashValue }]),
                 { bytes: shareTokenScriptValue.hash },
                 conStr0([
                   conStr1([{ bytes: crowdfundScriptValue.hash }]),

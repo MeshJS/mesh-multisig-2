@@ -1,21 +1,21 @@
 import { afterEach, describe, it } from "node:test";
-import {
-  conStr0,
-  conStr1,
-  MeshTxBuilder,
-  resolveSlotNo,
-  YaciProvider,
-} from "@meshsdk/core";
+import { conStr, conStr0, conStr1, MeshTxBuilder } from "@meshsdk/core";
 import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
-import { CrowdfundTestUtils, totalDeposit } from "./test-utils";
-import { OfflineEvaluator } from "@meshsdk/core-csl";
+import {
+  CrowdfundTestUtils,
+  drepRegisterDeposit,
+  mockPoolId,
+  stakeRegisterDeposit,
+  totalDeposit,
+  YaciProvider2,
+} from "./test-utils";
 
 describe("Yaci Crowdfund Contribute", async () => {
   afterEach(async () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   });
 
-  const provider = new YaciProvider("http://localhost:8080/api/v1");
+  const provider = new YaciProvider2("http://localhost:8080/api/v1");
 
   const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
     networkId: 0,
@@ -55,12 +55,20 @@ describe("Yaci Crowdfund Contribute", async () => {
   const initialTxHash =
     "a9aa2fcfed0ccf5363eca9c855769e5ffbf7e9d11d2569fd6905fa3f54b4af32";
   const initialTxIndex = 0;
-  const testUtils = new CrowdfundTestUtils(initialTxHash, initialTxIndex);
+  const testUtils = new CrowdfundTestUtils(
+    initialTxHash,
+    initialTxIndex,
+    "34417468703bd9d6b4b8acd3ba547d20dbefcec05d7c87e051c70f21",
+    true,
+  );
   const authTokenPolicyIdValue = testUtils.authTokenPolicyId();
   const authTokenScriptValue = testUtils.authTokenScript();
   const crowdfundScriptValue = testUtils.crowdfundScript();
   const shareTokenScriptValue = testUtils.shareTokenScript();
   const stakeHashValue = testUtils.stakeHash();
+  const rewardAddressValue = testUtils.rewardAddress();
+  const drepIdValue = testUtils.drepId();
+  const crowdfundStakeScriptValue = testUtils.crowdfundStakeScript();
   const deadline = 1783046375000;
   let lastSubmitted: string =
     "87349fd1c6ded74cf999cec5eecfa38bbf6265e05f7577d135d5646d702d77f2";
@@ -68,6 +76,7 @@ describe("Yaci Crowdfund Contribute", async () => {
   it("should mint authority tokens to script", async () => {
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
+      evaluator: provider,
     });
     // Mint the auth token to the script address
     const txHex = await txBuilder
@@ -86,7 +95,7 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
           conStr0([
-            { bytes: stakeHashValue },
+            conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             conStr0([
               conStr1([{ bytes: crowdfundScriptValue.hash }]),
@@ -114,6 +123,7 @@ describe("Yaci Crowdfund Contribute", async () => {
   it("should contribute to a crowdfund", async () => {
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
+      evaluator: provider,
     });
     // Contributing to crowdfund
     const contributeAmount = totalDeposit;
@@ -139,7 +149,7 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
           conStr0([
-            { bytes: stakeHashValue },
+            conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             conStr0([
               conStr1([{ bytes: crowdfundScriptValue.hash }]),
@@ -182,5 +192,94 @@ describe("Yaci Crowdfund Contribute", async () => {
       throw e;
     }
     lastSubmitted = txHash;
+  });
+
+  it("should register stake for the crowdfund", async () => {
+    const contributeAmount = totalDeposit;
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    // Register DRep, Stake, Delegate and vote
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 2)
+      .txInCollateral(lastSubmitted, 2)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInRedeemerValue(conStr(2, []), "JSON")
+      .txInInlineDatumPresent()
+      .txInScript(crowdfundScriptValue.cbor)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (
+            2000000 +
+            contributeAmount -
+            stakeRegisterDeposit -
+            drepRegisterDeposit
+          ).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr0([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            conStr0([
+              conStr1([{ bytes: crowdfundScriptValue.hash }]),
+              conStr1([]),
+            ]),
+            { int: totalDeposit },
+            { int: contributeAmount },
+            conStr0([]),
+            { int: deadline },
+            { int: 0 },
+            { int: 0 },
+          ]),
+        ),
+        "JSON",
+      )
+      .registerStakeCertificate(rewardAddressValue)
+      .drepRegistrationCertificate(drepIdValue)
+      .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
+      .certificateRedeemerValue(conStr0([]), "JSON", {
+        mem: 152103,
+        steps: 53714095,
+      })
+      .voteDelegationCertificate(
+        {
+          dRepId: drepIdValue,
+        },
+        rewardAddressValue,
+      )
+      .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
+      .certificateRedeemerValue(conStr0([]), "JSON", {
+        mem: 152103,
+        steps: 53714095,
+      })
+      .delegateStakeCertificate(rewardAddressValue, mockPoolId)
+      .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
+      .certificateRedeemerValue(conStr0([]), "JSON", {
+        mem: 152103,
+        steps: 53714095,
+      })
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    console.log(signedTx);
+    // let txHash;
+    // try {
+    //   txHash = await provider.submitTx(signedTx);
+    // } catch (e) {
+    //   console.error("Failed to submit transaction:", e);
+    //   throw e;
+    // }
+    // lastSubmitted = txHash;
   });
 });

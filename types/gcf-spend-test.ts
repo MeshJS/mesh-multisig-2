@@ -16,14 +16,11 @@ import {
   Bool,
   SpendingBlueprint,
   WithdrawalBlueprint,
+  Credential,
 } from "@meshsdk/core";
 
 const version = "V3";
 const networkId = 0; // 0 for testnet; 1 for mainnet
-// Every spending validator would compile into an address with an staking key hash
-// Recommend replace with your own stake key / script hash
-const stakeKeyHash = "2ad24b622409f307c97385354b3464c7b4bb3ffab6dd50da64d2a60f";
-const isStakeScriptCredential = true;
 
 export class GcfAuthMintMintBlueprint extends MintingBlueprint {
   compiledCode: string;
@@ -51,6 +48,8 @@ export class GcfSpendSpendBlueprint extends SpendingBlueprint {
       Lovelace,
       Lovelace,
     ],
+    stakeKeyHash: string,
+    isStakeScriptCredential: boolean,
   ) {
     const compiledCode = blueprint.validators[2]!.compiledCode;
     super(version, networkId, stakeKeyHash, isStakeScriptCredential);
@@ -142,7 +141,7 @@ export type CrowdfundGovDatum = Crowdfund | Proposed | Voted | Refundable;
 
 export type Crowdfund = ConStr0<
   [
-    ByteString,
+    Credential,
     ByteString,
     PubKeyAddress | ScriptAddress,
     Integer,
@@ -154,10 +153,10 @@ export type Crowdfund = ConStr0<
   ]
 >;
 
-export type Proposed = ConStr1<[ByteString, ByteString, Integer, Integer]>;
+export type Proposed = ConStr1<[Credential, ByteString, Integer, Integer]>;
 
 export type Voted = ConStr2<
-  [ByteString, ByteString, Integer, GovernanceActionId, Integer]
+  [Credential, ByteString, Integer, GovernanceActionId, Integer]
 >;
 
 export type GovernanceActionId = ConStr0<[TransactionId, Integer]>;
@@ -166,7 +165,7 @@ export type TransactionId = ByteString;
 
 export type Index = Integer;
 
-export type Refundable = ConStr<3, [ByteString, ByteString, Integer]>;
+export type Refundable = ConStr<3, [Credential, ByteString, Integer]>;
 
 export type PublishRedeemer = Register | Deregister;
 

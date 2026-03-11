@@ -1,8 +1,9 @@
 use aiken/cbor
 use aiken/collection/list
-use aiken/collection/pairs
 use aiken/crypto.{blake2b_256}
-use cardano/address.{Address, Inline, Script, VerificationKey, from_script}
+use cardano/address.{
+  Address, Credential, Inline, Script, VerificationKey, from_script,
+}
 use cardano/governance.{
   GovernanceActionId, NicePoll, ProposalProcedure, TreasuryWithdrawal, Vote,
   Voter,
@@ -52,7 +53,7 @@ pub fn mock_crowdfund_datum(
   allow_over_subscription: Bool,
 ) -> CrowdfundGovDatum {
   Crowdfund {
-    stake_hash: mock_stake_hash,
+    stake_cred: mock_stake_cred,
     share_token: mock_share_token,
     crowdfund_address: mock_crowdfund_address,
     fundraise_target: mock_fundraise_target,
@@ -66,6 +67,8 @@ pub fn mock_crowdfund_datum(
 
 pub const mock_stake_hash = mock_script_hash(0)
 
+pub const mock_stake_cred = Script(mock_stake_hash)
+
 pub const mock_spend_script_hash = mock_script_hash(1)
 
 pub const mock_crowdfund_gov_address = from_script(mock_spend_script_hash)
@@ -77,10 +80,10 @@ pub const mock_gov_address =
   }
 
 /// Address with same payment script as mock_gov_address but custom stake credential (for credential_matches_datum).
-pub fn mock_gov_address_with_stake(stake_hash: ByteArray) -> Address {
+pub fn mock_gov_address_with_stake(stake_cred: Credential) -> Address {
   Address {
     payment_credential: Script(mock_spend_script_hash),
-    stake_credential: Some(Inline(Script(stake_hash))),
+    stake_credential: Some(Inline(stake_cred)),
   }
 }
 

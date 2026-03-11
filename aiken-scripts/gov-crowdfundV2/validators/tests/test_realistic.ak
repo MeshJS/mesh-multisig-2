@@ -11,7 +11,7 @@ use mocktail.{
 }
 use tests/test_utils.{
   mock_auth_token, mock_deadline, mock_delegate_pool_id, mock_fundraise_target,
-  mock_gov_address, mock_share_token, mock_stake_hash,
+  mock_gov_address, mock_share_token, mock_stake_cred, mock_stake_hash,
 }
 use types.{Crowdfund, CrowdfundGovDatum, Proposed}
 
@@ -411,11 +411,16 @@ pub fn build_realistic_register_stake_tx(
 
   let output_datum: CrowdfundGovDatum =
     when input_datum is {
-      Crowdfund { stake_hash, share_token, deadline, .. } ->
-        Proposed { stake_hash, share_token, funds_controlled, deadline }
+      Crowdfund { stake_cred: mock_stake_cred, share_token, deadline, .. } ->
+        Proposed {
+          stake_cred: mock_stake_cred,
+          share_token,
+          funds_controlled,
+          deadline,
+        }
       _ ->
         Proposed {
-          stake_hash: mock_stake_hash,
+          stake_cred: mock_stake_cred,
           share_token: mock_share_token,
           funds_controlled,
           deadline: mock_deadline,
@@ -504,11 +509,11 @@ pub fn build_realistic_register_drep_tx(
 
   let output_datum: CrowdfundGovDatum =
     when input_datum is {
-      Proposed { stake_hash, share_token, deadline, .. } ->
-        Proposed { stake_hash, share_token, funds_controlled, deadline }
+      Proposed { stake_cred, share_token, deadline, .. } ->
+        Proposed { stake_cred, share_token, funds_controlled, deadline }
       _ ->
         Proposed {
-          stake_hash: mock_stake_hash,
+          stake_cred: mock_stake_cred,
           share_token: mock_share_token,
           funds_controlled,
           deadline: mock_deadline,
@@ -573,7 +578,7 @@ pub fn create_realistic_crowdfund_datum(
   current_fundraised_amount: Int,
 ) -> CrowdfundGovDatum {
   Crowdfund {
-    stake_hash: mock_stake_hash,
+    stake_cred: mock_stake_cred,
     share_token: mock_share_token,
     crowdfund_address: mock_gov_address,
     fundraise_target: mock_fundraise_target,
@@ -590,7 +595,7 @@ pub fn create_realistic_proposed_datum(
   funds_controlled: Int,
 ) -> CrowdfundGovDatum {
   Proposed {
-    stake_hash: mock_stake_hash,
+    stake_cred: mock_stake_cred,
     share_token: mock_share_token,
     funds_controlled,
     deadline: mock_deadline,

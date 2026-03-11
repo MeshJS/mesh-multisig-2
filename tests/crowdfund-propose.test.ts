@@ -75,7 +75,7 @@ describe("Crowdfund Propose", async () => {
           plutusData: serializeData(
             crowdfundScript.datum(
               conStr0([
-                { bytes: stakeHashValue },
+                conStr1([{ bytes: stakeHashValue }]),
                 { bytes: shareTokenScriptValue.hash },
                 conStr0([
                   conStr1([{ bytes: crowdfundScript.hash }]),
@@ -190,7 +190,7 @@ describe("Crowdfund Propose", async () => {
       .txOutInlineDatumValue(
         crowdfundScript.datum(
           conStr1([
-            { bytes: stakeHashValue },
+            conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             { int: 100502000000 },
             { int: deadline },
@@ -270,7 +270,7 @@ describe("Crowdfund Propose", async () => {
       .txOutInlineDatumValue(
         crowdfundScript.datum(
           conStr1([
-            { bytes: stakeHashValue },
+            conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             { int: 100502000000 },
             { int: deadline },

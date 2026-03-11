@@ -1,5 +1,3 @@
-use aiken/cbor
-use cardano/address.{Script, VerificationKey}
 use cardano/assets.{Lovelace, PolicyId, lovelace_of}
 use cardano/certificate.{Registered}
 use cardano/governance.{DelegateRepresentative, GovernanceActionId}
@@ -64,7 +62,7 @@ validator gCf_spend(
       ContributeFund ->
         when auth_input_datum is {
           Crowdfund {
-            stake_hash,
+            stake_cred,
             share_token,
             crowdfund_address,
             fundraise_target,
@@ -103,7 +101,7 @@ validator gCf_spend(
 
                 let output_datum_check =
                   auth_output_datum_raw == Crowdfund {
-                    stake_hash,
+                    stake_cred,
                     share_token,
                     crowdfund_address,
                     fundraise_target,
@@ -152,7 +150,7 @@ validator gCf_spend(
         let (share_token, eligibility_check, output_datum_check) =
           when auth_input_datum is {
             Crowdfund {
-              stake_hash,
+              stake_cred,
               share_token,
               crowdfund_address,
               fundraise_target,
@@ -167,7 +165,7 @@ validator gCf_spend(
               let fund_check = current_fundraised_amount <= fundraise_target
               let expected_datum =
                 Crowdfund {
-                  stake_hash,
+                  stake_cred,
                   share_token,
                   crowdfund_address,
                   fundraise_target,
@@ -183,10 +181,10 @@ validator gCf_spend(
                 auth_output_datum == expected_datum,
               )
             }
-            Refundable { stake_hash, share_token, funds_controlled } -> {
+            Refundable { stake_cred, share_token, funds_controlled } -> {
               let expected_datum =
                 Refundable {
-                  stake_hash,
+                  stake_cred,
                   share_token,
                   funds_controlled: funds_controlled + lovelace_withdrawn,
                 }
@@ -206,17 +204,12 @@ validator gCf_spend(
       // Governance: Register certificates and propose (Crowdfund → Crowdfund) - combines RegisterStake, RegisterDrep, and ProposeGovAction
       RegisterCerts ->
         when auth_input_datum is {
-          Crowdfund { stake_hash, .. } -> {
+          Crowdfund { stake_cred, .. } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
             let current_credential = get_inline_credential(current_address)
             // The stake credential could be Script or VerificationKey depending on address construction
-            let credential_hash =
-              when current_credential is {
-                Script(h) -> h
-                VerificationKey(h) -> h
-              }
-            let credential_matches_datum = credential_hash == stake_hash
+            let credential_matches_datum = current_credential == stake_cred
 
             let lovelace_check =
               check_lovelace_diff(
@@ -265,7 +258,7 @@ validator gCf_spend(
       ProposeGovAction ->
         when auth_input_datum is {
           Crowdfund {
-            stake_hash,
+            stake_cred,
             share_token,
             current_fundraised_amount,
             deadline,
@@ -278,7 +271,7 @@ validator gCf_spend(
               check_lovelace_diff(only_input, only_output, -gov_deposit)
             let output_datum_check =
               only_output_datum == Proposed {
-                stake_hash,
+                stake_cred,
                 share_token,
                 funds_controlled: current_fundraised_amount,
                 deadline,
@@ -287,7 +280,7 @@ validator gCf_spend(
               check_proposal_procedure(
                 proposal_procedures,
                 gov_deposit,
-                Script(stake_hash),
+                stake_cred,
                 gov_action_hash,
               )
 
@@ -299,7 +292,7 @@ validator gCf_spend(
       // Governance: Record vote on proposal (Proposed → Voted)
       VoteOnGovAction ->
         when auth_input_datum is {
-          Proposed { stake_hash, share_token, funds_controlled, deadline } -> {
+          Proposed { stake_cred, share_token, funds_controlled, deadline } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
 
@@ -311,7 +304,7 @@ validator gCf_spend(
               }
             let output_datum_check =
               only_output_datum == Voted {
-                stake_hash,
+                stake_cred,
                 share_token,
                 funds_controlled,
                 gov_tx_id,
@@ -320,7 +313,7 @@ validator gCf_spend(
 
             value_check? && output_datum_check? && is_value_clean? && check_vote(
               votes,
-              DelegateRepresentative(Script(stake_hash)),
+              DelegateRepresentative(stake_cred),
               gov_tx_id,
             )
           }
@@ -330,7 +323,7 @@ validator gCf_spend(
       // Governance: Deregister certificates after governance period (Voted → Refundable)
       DeregisterCerts ->
         when auth_input_datum is {
-          Voted { stake_hash, share_token, funds_controlled, deadline, .. } -> {
+          Voted { stake_cred, share_token, funds_controlled, deadline, .. } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
             let current_credential = get_inline_credential(current_address)
@@ -344,7 +337,7 @@ validator gCf_spend(
               )
             let output_datum_check =
               only_output_datum == Refundable {
-                stake_hash,
+                stake_cred,
                 share_token,
                 funds_controlled,
               }
@@ -371,10 +364,14 @@ validator gCf_spend(
         // Extract eligibility check, share_token, and amount to burn based on datum type
         let (eligibility_check, share_token, amount_to_burn) =
           when auth_input_datum is {
-            Refundable { stake_hash, share_token, funds_controlled } -> {
-              // Verify single input with stake_hash token
+            Refundable {
+              stake_cred: _stake_cred,
+              share_token,
+              funds_controlled,
+            } -> {
+              // Verify single input with stake_cred token
               expect [_] =
-                inputs_at_with(inputs, current_address, stake_hash, "")
+                inputs_at_with(inputs, current_address, auth_token, "")
               (True, share_token, funds_controlled)
             }
             Crowdfund { share_token, current_fundraised_amount, deadline, .. } ->
