@@ -10,7 +10,7 @@ use cocktail.{
 use types.{
   ContributeFund, ContributorWithdrawal, Crowdfund, CrowdfundGovDatum,
   CrowdfundGovRedeemer, DeregisterCerts, ProposeGovAction, Proposed, Refundable,
-  RegisterCerts, RemoveEmptyInstance, VoteOnGovAction, Voted,
+  RegisterCerts, RemoveEmptyInstance, VoteOnGovAction, Voted, WithdrawGovDeposit,
 }
 use utils.{
   check_fundraise_target, check_lovelace_diff, check_proposal_procedure,
@@ -319,6 +319,8 @@ validator gCf_spend(
           }
           _ -> False
         }
+
+      WithdrawGovDeposit -> True
 
       // Governance: Deregister certificates after governance period (Voted → Refundable)
       DeregisterCerts ->

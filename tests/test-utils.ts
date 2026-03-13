@@ -3,11 +3,10 @@ import {
   GcfStakePublishBlueprint,
   GcfSpendSpendBlueprint,
   ShareTokenMintBlueprint,
-} from "@/types/gcf-spend-test";
+} from "@/types/gcf-spend";
 import {
   resolveScriptHash,
   conStr0,
-  conStr1,
   YaciProvider,
   UTxO,
   Action,
@@ -36,16 +35,11 @@ export const drepRegisterDeposit = 500000000;
 export const govDeposit = 100000000000;
 export const totalDeposit =
   stakeRegisterDeposit + drepRegisterDeposit + govDeposit;
-export const defaultStakeKeyHash =
-  "2ad24b622409f307c97385354b3464c7b4bb3ffab6dd50da64d2a60f";
-export const defaultIsStakeScriptCredential = true;
 
 export class CrowdfundTestUtils {
   constructor(
     private readonly txHash: string,
     private readonly txIndex: number,
-    private readonly stakeKeyHash: string = defaultStakeKeyHash,
-    private readonly isStakeScriptCredential: boolean = defaultIsStakeScriptCredential,
   ) {}
 
   authTokenScript() {
@@ -82,8 +76,8 @@ export class CrowdfundTestUtils {
         { int: drepRegisterDeposit },
         { int: govDeposit },
       ],
-      this.stakeKeyHash,
-      this.isStakeScriptCredential,
+      this.crowdfundStakeScript().hash,
+      true,
     );
   }
 
@@ -98,8 +92,27 @@ export class CrowdfundTestUtils {
         { int: drepRegisterDeposit },
         { int: govDeposit },
       ],
-      this.stakeKeyHash,
-      this.isStakeScriptCredential,
+      this.crowdfundStakeScript().hash,
+      true,
+    );
+  }
+
+  crowdfundScriptCustomGovDeposit(
+    proposalCbor: string,
+    govDepositAmount: number,
+  ) {
+    return new GcfSpendSpendBlueprint(
+      [
+        { bytes: this.authTokenPolicyId() },
+        { bytes: proposerKeyHash },
+        { bytes: proposalCbor },
+        { bytes: mockPoolIdHash },
+        { int: stakeRegisterDeposit },
+        { int: drepRegisterDeposit },
+        { int: govDepositAmount },
+      ],
+      this.crowdfundStakeScript().hash,
+      true,
     );
   }
 

@@ -1,14 +1,21 @@
 import { afterEach, describe, it } from "node:test";
-import { conStr, conStr0, conStr1, MeshTxBuilder } from "@meshsdk/core";
+import {
+  conStr,
+  conStr0,
+  conStr1,
+  conStr3,
+  hashDrepAnchor,
+  MeshTxBuilder,
+} from "@meshsdk/core";
 import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import {
   CrowdfundTestUtils,
   drepRegisterDeposit,
   mockPoolId,
   stakeRegisterDeposit,
-  totalDeposit,
   YaciProvider2,
 } from "./test-utils";
+import { fromBuilderToPlutusData } from "@meshsdk/core-cst";
 
 describe("Yaci Crowdfund Contribute", async () => {
   afterEach(async () => {
@@ -55,15 +62,18 @@ describe("Yaci Crowdfund Contribute", async () => {
   const initialTxHash =
     "a9aa2fcfed0ccf5363eca9c855769e5ffbf7e9d11d2569fd6905fa3f54b4af32";
   const initialTxIndex = 0;
-  const testUtils = new CrowdfundTestUtils(
-    initialTxHash,
-    initialTxIndex,
-    "34417468703bd9d6b4b8acd3ba547d20dbefcec05d7c87e051c70f21",
-    true,
-  );
+  const testUtils = new CrowdfundTestUtils(initialTxHash, initialTxIndex);
+  const infoActionJson = conStr(6, []);
+  const infoActionHash = fromBuilderToPlutusData({
+    type: "JSON",
+    content: infoActionJson,
+  }).hash();
   const authTokenPolicyIdValue = testUtils.authTokenPolicyId();
   const authTokenScriptValue = testUtils.authTokenScript();
-  const crowdfundScriptValue = testUtils.crowdfundScript();
+  const crowdfundScriptValue = testUtils.crowdfundScriptCustomGovDeposit(
+    infoActionHash,
+    1000000000,
+  );
   const shareTokenScriptValue = testUtils.shareTokenScript();
   const stakeHashValue = testUtils.stakeHash();
   const rewardAddressValue = testUtils.rewardAddress();
@@ -71,7 +81,8 @@ describe("Yaci Crowdfund Contribute", async () => {
   const crowdfundStakeScriptValue = testUtils.crowdfundStakeScript();
   const deadline = 1783046375000;
   let lastSubmitted: string =
-    "87349fd1c6ded74cf999cec5eecfa38bbf6265e05f7577d135d5646d702d77f2";
+    "68bbcc14c5267d375745afbec658fc3a0adccb7985ec868c0fc67731fd1defa7";
+  const totalDeposit = stakeRegisterDeposit + drepRegisterDeposit + 1000000000;
 
   it("should mint authority tokens to script", async () => {
     const txBuilder = new MeshTxBuilder({
@@ -272,14 +283,122 @@ describe("Yaci Crowdfund Contribute", async () => {
       .complete();
 
     const signedTx = await wallet.signTxReturnFullTx(txHex);
-    console.log(signedTx);
-    // let txHash;
-    // try {
-    //   txHash = await provider.submitTx(signedTx);
-    // } catch (e) {
-    //   console.error("Failed to submit transaction:", e);
-    //   throw e;
-    // }
-    // lastSubmitted = txHash;
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+  });
+
+  it("should allow proposing an info action", async () => {
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(conStr3([]), "JSON")
+      .txInScript(crowdfundScriptValue.cbor)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr1([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            { int: totalDeposit },
+            { int: deadline },
+          ]),
+        ),
+        "JSON",
+      )
+      .proposal(
+        { action: {}, kind: "InfoAction" },
+        { anchorDataHash: hashDrepAnchor({}), anchorUrl: "" },
+        rewardAddressValue,
+        "1000000000",
+      )
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+  });
+
+  it("should allow withdrawal of governance deposit", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    const accountInfo = await provider.fetchAccountInfo(rewardAddressValue);
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(conStr(5, []), "JSON")
+      .txInScript(crowdfundScriptValue.cbor)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr1([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            { int: totalDeposit },
+            { int: deadline },
+          ]),
+        ),
+        "JSON",
+      )
+      .withdrawalPlutusScriptV3()
+      .withdrawal(rewardAddressValue, accountInfo.rewards)
+      .withdrawalRedeemerValue(conStr0([]), "JSON")
+      .withdrawalScript(crowdfundStakeScriptValue.cbor)
+      .changeAddress(walletAddress)
+      .complete();
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
   });
 });

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import blueprint from "../aiken-scripts/gov-crowdfundV2/plutus.json";
 
 import {
@@ -10,13 +9,13 @@ import {
   ByteString,
   ConStr2,
   ConStr,
+  Credential,
   PubKeyAddress,
   ScriptAddress,
   Integer,
   Bool,
   SpendingBlueprint,
   WithdrawalBlueprint,
-  Credential,
 } from "@meshsdk/core";
 
 const version = "V3";
@@ -93,11 +92,24 @@ export class GcfStakePublishBlueprint extends WithdrawalBlueprint {
   params = (data: [PolicyId]): [PolicyId] => data;
 }
 
+export class GcfStakeWithdrawBlueprint extends WithdrawalBlueprint {
+  compiledCode: string;
+
+  constructor(params: [PolicyId]) {
+    const compiledCode = blueprint.validators[7]!.compiledCode;
+    super(version, networkId);
+    this.compiledCode = compiledCode;
+    this.paramScript(compiledCode, params, "JSON");
+  }
+
+  params = (data: [PolicyId]): [PolicyId] => data;
+}
+
 export class ShareTokenMintBlueprint extends MintingBlueprint {
   compiledCode: string;
 
   constructor(params: [PolicyId]) {
-    const compiledCode = blueprint.validators[8]!.compiledCode;
+    const compiledCode = blueprint.validators[9]!.compiledCode;
     super(version);
     this.compiledCode = compiledCode;
     this.paramScript(compiledCode, params, "JSON");
@@ -120,6 +132,7 @@ export type CrowdfundGovRedeemer =
   | RegisterCerts
   | ProposeGovAction
   | VoteOnGovAction
+  | WithdrawGovDeposit
   | DeregisterCerts
   | RemoveEmptyInstance;
 
@@ -133,9 +146,11 @@ export type ProposeGovAction = ConStr<3, []>;
 
 export type VoteOnGovAction = ConStr<4, []>;
 
-export type DeregisterCerts = ConStr<5, []>;
+export type WithdrawGovDeposit = ConStr<5, []>;
 
-export type RemoveEmptyInstance = ConStr<6, []>;
+export type DeregisterCerts = ConStr<6, []>;
+
+export type RemoveEmptyInstance = ConStr<7, []>;
 
 export type CrowdfundGovDatum = Crowdfund | Proposed | Voted | Refundable;
 
@@ -159,7 +174,7 @@ export type Voted = ConStr2<
   [Credential, ByteString, Integer, GovernanceActionId, Integer]
 >;
 
-export type GovernanceActionId = ConStr0<[TransactionId, Integer]>;
+export type GovernanceActionId = ConStr0<[ByteString, ByteString]>;
 
 export type TransactionId = ByteString;
 
@@ -173,4 +188,5 @@ export type Register = ConStr0<[]>;
 
 export type Deregister = ConStr1<[]>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Data = any;

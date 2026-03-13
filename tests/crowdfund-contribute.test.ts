@@ -208,7 +208,11 @@ describe("Crowdfund Contribute", async () => {
         .complete();
 
       const signedTx = await wallet.signTxReturnFullTx(txHex);
-
+      const evaluator = new OfflineEvaluator(fetcher, "preprod");
+      console.log(
+        "Evaluating transaction...",
+        await evaluator.evaluateTx(signedTx, [], []),
+      );
       submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
       console.log("Second transaction submit result:", submitResult);
       assert(submitResult.isSuccess);
