@@ -20,7 +20,7 @@ import {
 } from "./test-utils";
 import { MeshCardanoHeadlessWallet, AddressType } from "@meshsdk/wallet";
 import assert from "assert";
-import { RewardAccount } from "@meshsdk/core-cst";
+import { RewardAccount, toScriptRef } from "@meshsdk/core-cst";
 
 describe("Crowdfund Propose", async () => {
   const initialTxHash =
@@ -104,6 +104,21 @@ describe("Crowdfund Propose", async () => {
           amount: [{ unit: "lovelace", quantity: "899490241122" }],
         },
       },
+      {
+        input: {
+          txHash:
+            "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+          outputIndex: 2,
+        },
+        output: {
+          address: address,
+          amount: [{ unit: "lovelace", quantity: "1000000000" }],
+          scriptRef: toScriptRef({
+            code: crowdfundScript.cbor,
+            version: "V3",
+          }).toCbor(),
+        },
+      },
     ];
   };
 
@@ -176,7 +191,10 @@ describe("Crowdfund Propose", async () => {
       )
       .txInInlineDatumPresent()
       .txInRedeemerValue(conStr3([]), "JSON")
-      .txInScript(crowdfundScript.cbor)
+      .spendingTxInReference(
+        "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+        2,
+      )
       .txOut(crowdfundScript.address, [
         {
           unit: "lovelace",
@@ -256,7 +274,10 @@ describe("Crowdfund Propose", async () => {
       )
       .txInInlineDatumPresent()
       .txInRedeemerValue(conStr3([]), "JSON")
-      .txInScript(crowdfundScript.cbor)
+      .spendingTxInReference(
+        "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+        2,
+      )
       .txOut(crowdfundScript.address, [
         {
           unit: "lovelace",

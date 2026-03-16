@@ -185,6 +185,7 @@ export class YaciProvider2 extends YaciProvider {
           certificate: "CERT",
           publish: "CERT",
           reward: "REWARD",
+          vote: "VOTE",
         };
         const result: Omit<Action, "data">[] = [];
 

@@ -174,7 +174,7 @@ export type Voted = ConStr2<
   [Credential, ByteString, Integer, GovernanceActionId, Integer]
 >;
 
-export type GovernanceActionId = ConStr0<[ByteString, ByteString]>;
+export type GovernanceActionId = ConStr0<[ByteString, Integer]>;
 
 export type TransactionId = ByteString;
 

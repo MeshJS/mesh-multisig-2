@@ -21,6 +21,7 @@ import {
   totalDeposit,
 } from "./test-utils";
 import assert from "assert";
+import { toScriptRef } from "@meshsdk/core-cst";
 
 describe("Crowdfund Contribute", async () => {
   const initialTxHash =
@@ -50,6 +51,25 @@ describe("Crowdfund Contribute", async () => {
             quantity: "1000000000000",
           },
         ],
+      },
+    },
+    {
+      input: {
+        txHash: initialTxHash,
+        outputIndex: initialTxIndex + 1,
+      },
+      output: {
+        address: address,
+        amount: [
+          {
+            unit: "lovelace",
+            quantity: "1000000000000",
+          },
+        ],
+        scriptRef: toScriptRef({
+          code: crowdfundScriptValue.cbor,
+          version: "V3",
+        }).toCbor(),
       },
     },
   ];
@@ -159,7 +179,7 @@ describe("Crowdfund Contribute", async () => {
         .txIn(submitResult.txHash!, 0)
         .txInRedeemerValue(conStr0([]), "JSON")
         .txInInlineDatumPresent()
-        .txInScript(crowdfundScriptValue.cbor)
+        .spendingTxInReference(initialTxHash, initialTxIndex + 1)
         .txOut(crowdfundScriptValue.address, [
           {
             unit: "lovelace",
@@ -208,11 +228,6 @@ describe("Crowdfund Contribute", async () => {
         .complete();
 
       const signedTx = await wallet.signTxReturnFullTx(txHex);
-      const evaluator = new OfflineEvaluator(fetcher, "preprod");
-      console.log(
-        "Evaluating transaction...",
-        await evaluator.evaluateTx(signedTx, [], []),
-      );
       submitResult = emulator.submitTx(Buffer.from(signedTx, "hex"));
       console.log("Second transaction submit result:", submitResult);
       assert(submitResult.isSuccess);
@@ -235,7 +250,7 @@ describe("Crowdfund Contribute", async () => {
           .txIn(submitResult.txHash!, 0)
           .txInRedeemerValue(conStr(2, []), "JSON")
           .txInInlineDatumPresent()
-          .txInScript(crowdfundScriptValue.cbor)
+          .spendingTxInReference(initialTxHash, initialTxIndex + 1)
           .txOut(crowdfundScriptValue.address, [
             {
               unit: "lovelace",

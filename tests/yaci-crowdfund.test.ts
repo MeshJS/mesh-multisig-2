@@ -3,6 +3,7 @@ import {
   conStr,
   conStr0,
   conStr1,
+  conStr2,
   conStr3,
   hashDrepAnchor,
   MeshTxBuilder,
@@ -83,6 +84,21 @@ describe("Yaci Crowdfund Contribute", async () => {
   let lastSubmitted: string =
     "68bbcc14c5267d375745afbec658fc3a0adccb7985ec868c0fc67731fd1defa7";
   const totalDeposit = stakeRegisterDeposit + drepRegisterDeposit + 1000000000;
+  let gcfRefInput: {
+    txHash: string;
+    outputIndex: number;
+  } = {
+    txHash: "",
+    outputIndex: 0,
+  };
+
+  let proposalId: {
+    txHash: string;
+    proposalIndex: number;
+  } = {
+    txHash: "",
+    proposalIndex: 0,
+  };
 
   it("should mint authority tokens to script", async () => {
     const txBuilder = new MeshTxBuilder({
@@ -122,12 +138,18 @@ describe("Yaci Crowdfund Contribute", async () => {
         ),
         "JSON",
       )
+      .txOut(walletAddress, [])
+      .txOutReferenceScript(crowdfundScriptValue.cbor)
       .txInCollateral(utxos[0].input.txHash, utxos[0].input.outputIndex)
       .changeAddress(walletAddress)
       .complete();
 
     const signedTx = await wallet.signTxReturnFullTx(txHex);
     const txHash = await provider.submitTx(signedTx);
+    gcfRefInput = {
+      txHash,
+      outputIndex: 1,
+    };
     lastSubmitted = txHash;
   });
 
@@ -140,13 +162,13 @@ describe("Yaci Crowdfund Contribute", async () => {
     const contributeAmount = totalDeposit;
     const latestBlock = await provider.get("/blocks/latest");
     const txHex = await txBuilder
-      .txIn(lastSubmitted, 1)
-      .txInCollateral(lastSubmitted, 1)
+      .txIn(lastSubmitted, 2)
+      .txInCollateral(lastSubmitted, 2)
       .spendingPlutusScriptV3()
       .txIn(lastSubmitted, 0)
       .txInRedeemerValue(conStr0([]), "JSON")
       .txInInlineDatumPresent()
-      .txInScript(crowdfundScriptValue.cbor)
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
       .txOut(crowdfundScriptValue.address, [
         {
           unit: "lovelace",
@@ -220,7 +242,7 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txIn(lastSubmitted, 0)
       .txInRedeemerValue(conStr(2, []), "JSON")
       .txInInlineDatumPresent()
-      .txInScript(crowdfundScriptValue.cbor)
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
       .txOut(crowdfundScriptValue.address, [
         {
           unit: "lovelace",
@@ -306,7 +328,7 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txIn(lastSubmitted, 0)
       .txInInlineDatumPresent()
       .txInRedeemerValue(conStr3([]), "JSON")
-      .txInScript(crowdfundScriptValue.cbor)
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
       .txOut(crowdfundScriptValue.address, [
         {
           unit: "lovelace",
@@ -345,10 +367,83 @@ describe("Yaci Crowdfund Contribute", async () => {
       console.error("Failed to submit transaction:", e);
       throw e;
     }
+    proposalId = {
+      txHash,
+      proposalIndex: 0,
+    };
     lastSubmitted = txHash;
   });
 
-  it("should allow withdrawal of governance deposit", async () => {
+  it("should allow voting on proposal", async () => {
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInInlineDatumPresent()
+      .txInRedeemerValue(conStr(4, []), "JSON")
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr2([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            { int: totalDeposit },
+            conStr0([
+              { bytes: proposalId.txHash },
+              { int: proposalId.proposalIndex },
+            ] as [{ bytes: string }, { int: number }]),
+            { int: deadline },
+          ]),
+        ),
+        "JSON",
+      )
+      .votePlutusScriptV3()
+      .vote(
+        {
+          type: "DRep",
+          drepId: drepIdValue,
+        },
+        {
+          txHash: proposalId.txHash,
+          txIndex: proposalId.proposalIndex,
+        },
+        {
+          voteKind: "Yes",
+        },
+      )
+      .voteRedeemerValue(conStr0([]), "JSON")
+      .voteScript(crowdfundStakeScriptValue.cbor)
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+  });
+
+  it("should allow withdrawal of expired governance deposit", async () => {
     await new Promise((resolve) => setTimeout(resolve, 20000));
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
@@ -363,11 +458,11 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txIn(lastSubmitted, 0)
       .txInInlineDatumPresent()
       .txInRedeemerValue(conStr(5, []), "JSON")
-      .txInScript(crowdfundScriptValue.cbor)
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
       .txOut(crowdfundScriptValue.address, [
         {
           unit: "lovelace",
-          quantity: (2000000).toString(),
+          quantity: (2000000 + 1000000000).toString(),
         },
         {
           unit: authTokenPolicyIdValue,
@@ -376,10 +471,14 @@ describe("Yaci Crowdfund Contribute", async () => {
       ])
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
-          conStr1([
+          conStr2([
             conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             { int: totalDeposit },
+            conStr0([
+              { bytes: proposalId.txHash },
+              { int: proposalId.proposalIndex },
+            ] as [{ bytes: string }, { int: number }]),
             { int: deadline },
           ]),
         ),

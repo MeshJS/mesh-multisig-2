@@ -320,7 +320,46 @@ validator gCf_spend(
           _ -> False
         }
 
-      WithdrawGovDeposit -> True
+      WithdrawGovDeposit ->
+        when auth_input_datum is {
+          Voted {
+            stake_cred,
+            share_token,
+            funds_controlled,
+            gov_tx_id,
+            deadline,
+          } -> {
+            let (only_input, only_output, only_output_datum, is_value_clean) =
+              get_single_auth_io(inputs, outputs, current_address, auth_token)
+
+            let lovelace_check =
+              check_lovelace_diff(only_input, only_output, gov_deposit)
+            let output_datum_check =
+              only_output_datum == Voted {
+                stake_cred,
+                share_token,
+                funds_controlled,
+                gov_tx_id,
+                deadline,
+              }
+            lovelace_check? && output_datum_check? && is_value_clean?
+          }
+          Proposed { stake_cred, share_token, funds_controlled, deadline } -> {
+            let (only_input, only_output, only_output_datum, is_value_clean) =
+              get_single_auth_io(inputs, outputs, current_address, auth_token)
+            let lovelace_check =
+              check_lovelace_diff(only_input, only_output, gov_deposit)
+            let output_datum_check =
+              only_output_datum == Proposed {
+                stake_cred,
+                share_token,
+                funds_controlled,
+                deadline,
+              }
+            lovelace_check? && output_datum_check? && is_value_clean?
+          }
+          _ -> False
+        }
 
       // Governance: Deregister certificates after governance period (Voted → Refundable)
       DeregisterCerts ->
