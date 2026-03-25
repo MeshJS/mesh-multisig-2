@@ -112,7 +112,7 @@ describe("Yaci Crowdfund Contribute", async () => {
   const crowdfundStakeScriptValue = testUtils.crowdfundStakeScript();
   const deadline = Date.now() + 10000;
   let lastSubmitted: string =
-    "68bbcc14c5267d375745afbec658fc3a0adccb7985ec868c0fc67731fd1defa7";
+    "a8c1641a9bdcaec0793ef1498e8bf965ea33bdecb77d3db19e477bc4c143a201";
   const totalDeposit = stakeRegisterDeposit + drepRegisterDeposit + 1000000000;
   let gcfRefInput: {
     txHash: string;
@@ -557,6 +557,62 @@ describe("Yaci Crowdfund Contribute", async () => {
       .invalidBefore(latestBlock.slot - 5)
       .changeAddress(walletAddress)
       .complete();
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+  });
+
+  it("should allow crowdfund refund", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    // Crowdfund refund after deadline with no proposal passed
+    const contributeAmount = totalDeposit;
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
+      .txIn(shareTokenInput.txHash, shareTokenInput.outputIndex)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInRedeemerValue(conStr1([]), "JSON")
+      .txInInlineDatumPresent()
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr3([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            { int: 0 },
+          ]),
+        ),
+        "JSON",
+      )
+      .mintPlutusScriptV3()
+      .mint((-contributeAmount).toString(), shareTokenScriptValue.hash, "")
+      .mintingScript(shareTokenScriptValue.cbor)
+      .mintRedeemerValue(conStr1([]), "JSON")
+      .changeAddress(walletAddress)
+      .complete();
+
     const signedTx = await wallet.signTxReturnFullTx(txHex);
     let txHash;
     try {
