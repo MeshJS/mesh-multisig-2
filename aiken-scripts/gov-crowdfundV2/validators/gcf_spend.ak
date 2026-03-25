@@ -10,7 +10,7 @@ use cocktail.{
 use types.{
   ContributeFund, ContributorWithdrawal, Crowdfund, CrowdfundGovDatum,
   CrowdfundGovRedeemer, DeregisterCerts, ProposeGovAction, Proposed, Refundable,
-  RegisterCerts, RemoveEmptyInstance, VoteOnGovAction, Voted, WithdrawGovDeposit,
+  RegisterCerts, RemoveEmptyInstance, VoteOnGovAction, Voted,
 }
 use utils.{
   check_fundraise_target, check_lovelace_diff, check_proposal_procedure,
@@ -320,48 +320,7 @@ validator gCf_spend(
           _ -> False
         }
 
-      WithdrawGovDeposit ->
-        when auth_input_datum is {
-          Voted {
-            stake_cred,
-            share_token,
-            funds_controlled,
-            gov_tx_id,
-            deadline,
-          } -> {
-            let (only_input, only_output, only_output_datum, is_value_clean) =
-              get_single_auth_io(inputs, outputs, current_address, auth_token)
-
-            let lovelace_check =
-              check_lovelace_diff(only_input, only_output, gov_deposit)
-            let output_datum_check =
-              only_output_datum == Voted {
-                stake_cred,
-                share_token,
-                funds_controlled,
-                gov_tx_id,
-                deadline,
-              }
-            lovelace_check? && output_datum_check? && is_value_clean?
-          }
-          Proposed { stake_cred, share_token, funds_controlled, deadline } -> {
-            let (only_input, only_output, only_output_datum, is_value_clean) =
-              get_single_auth_io(inputs, outputs, current_address, auth_token)
-            let lovelace_check =
-              check_lovelace_diff(only_input, only_output, gov_deposit)
-            let output_datum_check =
-              only_output_datum == Proposed {
-                stake_cred,
-                share_token,
-                funds_controlled,
-                deadline,
-              }
-            lovelace_check? && output_datum_check? && is_value_clean?
-          }
-          _ -> False
-        }
-
-      // Governance: Deregister certificates after governance period (Voted → Refundable)
+      // Governance: Deregister certificates after governance period (Voted/Proposed/Crowdfund → Refundable)
       DeregisterCerts ->
         when auth_input_datum is {
           Voted { stake_cred, share_token, funds_controlled, deadline, .. } -> {
@@ -381,6 +340,80 @@ validator gCf_spend(
                 stake_cred,
                 share_token,
                 funds_controlled,
+              }
+            let unreg_stake_cert_check =
+              unregister_stake_certificate(certificates, current_credential)
+            let unreg_drep_cert_check =
+              unregister_drep_certificate(
+                certificates,
+                current_credential,
+                drep_register_deposit,
+              )
+
+            validity_check? && lovelace_check? && output_datum_check? && unreg_stake_cert_check? && unreg_drep_cert_check? && is_value_clean?
+          }
+          Proposed { stake_cred, share_token, funds_controlled, deadline } -> {
+            let (only_input, only_output, only_output_datum, is_value_clean) =
+              get_single_auth_io(inputs, outputs, current_address, auth_token)
+            let current_credential = get_inline_credential(current_address)
+
+            let validity_check = valid_after(validity_range, deadline)
+            let lovelace_check =
+              check_lovelace_diff(
+                only_input,
+                only_output,
+                stake_register_deposit + drep_register_deposit + gov_deposit,
+              )
+            let output_datum_check =
+              only_output_datum == Refundable {
+                stake_cred,
+                share_token,
+                funds_controlled,
+              }
+            let unreg_stake_cert_check =
+              unregister_stake_certificate(certificates, current_credential)
+            let unreg_drep_cert_check =
+              unregister_drep_certificate(
+                certificates,
+                current_credential,
+                drep_register_deposit,
+              )
+
+            validity_check? && lovelace_check? && output_datum_check? && unreg_stake_cert_check? && unreg_drep_cert_check? && is_value_clean?
+          }
+          Crowdfund {
+            stake_cred,
+            share_token,
+            crowdfund_address,
+            fundraise_target,
+            current_fundraised_amount,
+            allow_over_subscription,
+            deadline,
+            expiry_buffer,
+            min_charge,
+          } -> {
+            let (only_input, only_output, only_output_datum, is_value_clean) =
+              get_single_auth_io(inputs, outputs, current_address, auth_token)
+            let current_credential = get_inline_credential(current_address)
+
+            let validity_check = valid_after(validity_range, deadline)
+            let lovelace_check =
+              check_lovelace_diff(
+                only_input,
+                only_output,
+                stake_register_deposit + drep_register_deposit,
+              )
+            let output_datum_check =
+              only_output_datum == Crowdfund {
+                stake_cred,
+                share_token,
+                crowdfund_address,
+                fundraise_target,
+                current_fundraised_amount,
+                allow_over_subscription,
+                deadline,
+                expiry_buffer,
+                min_charge,
               }
             let unreg_stake_cert_check =
               unregister_stake_certificate(certificates, current_credential)

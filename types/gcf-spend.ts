@@ -132,7 +132,6 @@ export type CrowdfundGovRedeemer =
   | RegisterCerts
   | ProposeGovAction
   | VoteOnGovAction
-  | WithdrawGovDeposit
   | DeregisterCerts
   | RemoveEmptyInstance;
 
@@ -146,11 +145,9 @@ export type ProposeGovAction = ConStr<3, []>;
 
 export type VoteOnGovAction = ConStr<4, []>;
 
-export type WithdrawGovDeposit = ConStr<5, []>;
+export type DeregisterCerts = ConStr<5, []>;
 
-export type DeregisterCerts = ConStr<6, []>;
-
-export type RemoveEmptyInstance = ConStr<7, []>;
+export type RemoveEmptyInstance = ConStr<6, []>;
 
 export type CrowdfundGovDatum = Crowdfund | Proposed | Voted | Refundable;
 

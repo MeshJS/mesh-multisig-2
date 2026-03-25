@@ -7,7 +7,6 @@ pub type CrowdfundGovRedeemer {
   RegisterCerts
   ProposeGovAction
   VoteOnGovAction
-  WithdrawGovDeposit
   DeregisterCerts
   RemoveEmptyInstance
 }

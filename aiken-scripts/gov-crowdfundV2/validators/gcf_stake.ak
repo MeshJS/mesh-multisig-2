@@ -2,7 +2,7 @@ use cardano/assets.{PolicyId}
 use cardano/transaction.{Transaction}
 use types.{
   Deregister, DeregisterCerts, ProposeGovAction, PublishRedeemer, Register,
-  RegisterCerts, VoteOnGovAction, WithdrawGovDeposit,
+  RegisterCerts, VoteOnGovAction,
 }
 use utils.{check_auth_token_input_redeemer}
 
@@ -60,7 +60,7 @@ validator gCf_stake(auth_token: PolicyId) {
       auth_token,
       inputs,
       redeemers,
-      WithdrawGovDeposit,
+      DeregisterCerts,
     )?
   }
 

@@ -1,4 +1,4 @@
-import { afterEach, describe, it } from "node:test";
+import { afterEach, before, describe, it } from "node:test";
 import {
   conStr,
   conStr0,
@@ -7,6 +7,7 @@ import {
   conStr3,
   hashDrepAnchor,
   MeshTxBuilder,
+  UTxO,
 } from "@meshsdk/core";
 import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import {
@@ -24,41 +25,70 @@ describe("Yaci Crowdfund Contribute", async () => {
   });
 
   const provider = new YaciProvider2("http://localhost:8080/api/v1");
+  let providerAvailable = true;
 
-  const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
-    networkId: 0,
-    fetcher: provider,
-    walletAddressType: AddressType.Base,
-    mnemonic: [
-      "horror",
-      "hand",
-      "pulp",
-      "market",
-      "slight",
-      "photo",
-      "frown",
-      "pulp",
-      "crawl",
-      "day",
-      "senior",
-      "property",
-      "calm",
-      "inner",
-      "reflect",
-      "stage",
-      "spot",
-      "before",
-      "charge",
-      "artist",
-      "together",
-      "heavy",
-      "quote",
-      "soup",
-    ],
+  let wallet: MeshCardanoHeadlessWallet;
+  let walletAddress = "";
+  let utxos: UTxO[] = [];
+
+  before(async () => {
+    try {
+      await provider.get("/blocks/latest");
+    } catch (error) {
+      providerAvailable = false;
+      console.warn(
+        "Skipping Yaci Crowdfund Contribute tests because the provider is unavailable.",
+        error,
+      );
+      return;
+    }
+
+    wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      networkId: 0,
+      fetcher: provider,
+      walletAddressType: AddressType.Base,
+      mnemonic: [
+        "horror",
+        "hand",
+        "pulp",
+        "market",
+        "slight",
+        "photo",
+        "frown",
+        "pulp",
+        "crawl",
+        "day",
+        "senior",
+        "property",
+        "calm",
+        "inner",
+        "reflect",
+        "stage",
+        "spot",
+        "before",
+        "charge",
+        "artist",
+        "together",
+        "heavy",
+        "quote",
+        "soup",
+      ],
+    });
+
+    walletAddress = await wallet.getChangeAddressBech32();
+    utxos = await wallet.getUtxosMesh();
   });
 
-  const walletAddress = await wallet.getChangeAddressBech32();
-  const utxos = await wallet.getUtxosMesh();
+  const skipIfProviderUnavailable = (t: {
+    skip: (message?: string) => void;
+  }) => {
+    if (!providerAvailable) {
+      t.skip("Provider unavailable");
+      return true;
+    }
+
+    return false;
+  };
 
   const initialTxHash =
     "a9aa2fcfed0ccf5363eca9c855769e5ffbf7e9d11d2569fd6905fa3f54b4af32";
@@ -80,7 +110,7 @@ describe("Yaci Crowdfund Contribute", async () => {
   const rewardAddressValue = testUtils.rewardAddress();
   const drepIdValue = testUtils.drepId();
   const crowdfundStakeScriptValue = testUtils.crowdfundStakeScript();
-  const deadline = 1783046375000;
+  const deadline = Date.now() + 10000;
   let lastSubmitted: string =
     "68bbcc14c5267d375745afbec658fc3a0adccb7985ec868c0fc67731fd1defa7";
   const totalDeposit = stakeRegisterDeposit + drepRegisterDeposit + 1000000000;
@@ -100,7 +130,17 @@ describe("Yaci Crowdfund Contribute", async () => {
     proposalIndex: 0,
   };
 
-  it("should mint authority tokens to script", async () => {
+  let shareTokenInput: {
+    txHash: string;
+    outputIndex: number;
+  } = {
+    txHash: "",
+    outputIndex: 0,
+  };
+
+  it("should mint authority tokens to script", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
@@ -153,7 +193,9 @@ describe("Yaci Crowdfund Contribute", async () => {
     lastSubmitted = txHash;
   });
 
-  it("should contribute to a crowdfund", async () => {
+  it("should contribute to a crowdfund", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
@@ -225,9 +267,15 @@ describe("Yaci Crowdfund Contribute", async () => {
       throw e;
     }
     lastSubmitted = txHash;
+    shareTokenInput = {
+      txHash,
+      outputIndex: 1,
+    };
   });
 
-  it("should register stake for the crowdfund", async () => {
+  it("should register stake for the crowdfund", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     const contributeAmount = totalDeposit;
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
@@ -315,7 +363,9 @@ describe("Yaci Crowdfund Contribute", async () => {
     lastSubmitted = txHash;
   });
 
-  it("should allow proposing an info action", async () => {
+  it("should allow proposing an info action", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
@@ -374,7 +424,9 @@ describe("Yaci Crowdfund Contribute", async () => {
     lastSubmitted = txHash;
   });
 
-  it("should allow voting on proposal", async () => {
+  it("should allow voting on proposal", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
@@ -443,13 +495,15 @@ describe("Yaci Crowdfund Contribute", async () => {
     lastSubmitted = txHash;
   });
 
-  it("should allow withdrawal of expired governance deposit", async () => {
+  it("should allow withdrawal of expired governance deposit", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
     await new Promise((resolve) => setTimeout(resolve, 20000));
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
     });
-
+    const latestBlock = await provider.get("/blocks/latest");
     const accountInfo = await provider.fetchAccountInfo(rewardAddressValue);
     const txHex = await txBuilder
       .txIn(lastSubmitted, 1)
@@ -462,7 +516,12 @@ describe("Yaci Crowdfund Contribute", async () => {
       .txOut(crowdfundScriptValue.address, [
         {
           unit: "lovelace",
-          quantity: (2000000 + 1000000000).toString(),
+          quantity: (
+            2000000 +
+            1000000000 +
+            drepRegisterDeposit +
+            stakeRegisterDeposit
+          ).toString(),
         },
         {
           unit: authTokenPolicyIdValue,
@@ -471,15 +530,10 @@ describe("Yaci Crowdfund Contribute", async () => {
       ])
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
-          conStr2([
+          conStr3([
             conStr1([{ bytes: stakeHashValue }]),
             { bytes: shareTokenScriptValue.hash },
             { int: totalDeposit },
-            conStr0([
-              { bytes: proposalId.txHash },
-              { int: proposalId.proposalIndex },
-            ] as [{ bytes: string }, { int: number }]),
-            { int: deadline },
           ]),
         ),
         "JSON",
@@ -488,6 +542,19 @@ describe("Yaci Crowdfund Contribute", async () => {
       .withdrawal(rewardAddressValue, accountInfo.rewards)
       .withdrawalRedeemerValue(conStr0([]), "JSON")
       .withdrawalScript(crowdfundStakeScriptValue.cbor)
+      .deregisterStakeCertificate(rewardAddressValue)
+      .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
+      .certificateRedeemerValue(conStr1([]), "JSON", {
+        mem: 152103,
+        steps: 53714095,
+      })
+      .drepDeregistrationCertificate(drepIdValue, String(drepRegisterDeposit))
+      .certificateScript(crowdfundStakeScriptValue.cbor, "V3")
+      .certificateRedeemerValue(conStr1([]), "JSON", {
+        mem: 152103,
+        steps: 53714095,
+      })
+      .invalidBefore(latestBlock.slot - 5)
       .changeAddress(walletAddress)
       .complete();
     const signedTx = await wallet.signTxReturnFullTx(txHex);
