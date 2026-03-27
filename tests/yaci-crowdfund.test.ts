@@ -201,11 +201,160 @@ describe("Yaci Crowdfund Contribute", async () => {
       evaluator: provider,
     });
     // Contributing to crowdfund
-    const contributeAmount = totalDeposit;
+    const contributeAmount = totalDeposit / 2;
     const latestBlock = await provider.get("/blocks/latest");
     const txHex = await txBuilder
       .txIn(lastSubmitted, 2)
       .txInCollateral(lastSubmitted, 2)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInRedeemerValue(conStr0([]), "JSON")
+      .txInInlineDatumPresent()
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000 + contributeAmount).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr0([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            conStr0([
+              conStr1([{ bytes: crowdfundScriptValue.hash }]),
+              conStr1([]),
+            ]),
+            { int: totalDeposit },
+            { int: contributeAmount },
+            conStr0([]),
+            { int: deadline },
+            { int: 0 },
+            { int: 0 },
+          ]),
+        ),
+        "JSON",
+      )
+      .mintPlutusScriptV3()
+      .mint(contributeAmount.toString(), shareTokenScriptValue.hash, "")
+      .mintingScript(shareTokenScriptValue.cbor)
+      .mintRedeemerValue(conStr0([]), "JSON")
+      .txOut(walletAddress, [
+        {
+          unit: "lovelace",
+          quantity: "2000000",
+        },
+        {
+          unit: `${shareTokenScriptValue.hash}`,
+          quantity: contributeAmount.toString(),
+        },
+      ])
+      .invalidHereafter(latestBlock.slot + 30)
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+    shareTokenInput = {
+      txHash,
+      outputIndex: 1,
+    };
+  });
+
+  it("should allow refund of ongoing crowdfund", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+    const contributeAmount = totalDeposit / 2;
+    // Crowdfund refund before deadline
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 2)
+      .txInCollateral(lastSubmitted, 2)
+      .txIn(shareTokenInput.txHash, shareTokenInput.outputIndex)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInRedeemerValue(conStr1([]), "JSON")
+      .txInInlineDatumPresent()
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
+      .txOut(crowdfundScriptValue.address, [
+        {
+          unit: "lovelace",
+          quantity: (2000000).toString(),
+        },
+        {
+          unit: authTokenPolicyIdValue,
+          quantity: "1",
+        },
+      ])
+      .txOutInlineDatumValue(
+        crowdfundScriptValue.datum(
+          conStr0([
+            conStr1([{ bytes: stakeHashValue }]),
+            { bytes: shareTokenScriptValue.hash },
+            conStr0([
+              conStr1([{ bytes: crowdfundScriptValue.hash }]),
+              conStr1([]),
+            ]),
+            { int: totalDeposit },
+            { int: 0 },
+            conStr0([]),
+            { int: deadline },
+            { int: 0 },
+            { int: 0 },
+          ]),
+        ),
+        "JSON",
+      )
+      .mintPlutusScriptV3()
+      .mint((-contributeAmount).toString(), shareTokenScriptValue.hash, "")
+      .mintingScript(shareTokenScriptValue.cbor)
+      .mintRedeemerValue(conStr1([]), "JSON")
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+    shareTokenInput = {
+      txHash: "",
+      outputIndex: 0,
+    };
+  });
+
+  it("should contribute to a crowdfund after refund", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+    // Contributing to crowdfund
+    const contributeAmount = totalDeposit;
+    const latestBlock = await provider.get("/blocks/latest");
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
       .spendingPlutusScriptV3()
       .txIn(lastSubmitted, 0)
       .txInRedeemerValue(conStr0([]), "JSON")
@@ -498,7 +647,7 @@ describe("Yaci Crowdfund Contribute", async () => {
   it("should allow withdrawal of expired governance deposit", async (t) => {
     if (skipIfProviderUnavailable(t)) return;
 
-    await new Promise((resolve) => setTimeout(resolve, 20000));
+    await new Promise((resolve) => setTimeout(resolve, 25000));
     const txBuilder = new MeshTxBuilder({
       fetcher: provider,
       evaluator: provider,
