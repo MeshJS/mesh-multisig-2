@@ -3,7 +3,7 @@ import {
   fromBuilderToPlutusData,
   PlutusData,
 } from "@meshsdk/core-cst";
-import { PlutusData as MeshPlutusData } from "@meshsdk/core";
+import { conStr, PlutusData as MeshPlutusData } from "@meshsdk/core";
 
 export const treasuryWithdrawalDatum = (
   beificiaryAmounts: [string, bigint][],
@@ -46,5 +46,12 @@ export const treasuryWithdrawalDatum = (
       ],
     },
     type: "JSON",
+  });
+};
+
+export const infoActionDatum = (): PlutusData => {
+  return fromBuilderToPlutusData({
+    type: "JSON",
+    content: conStr(6, []),
   });
 };
