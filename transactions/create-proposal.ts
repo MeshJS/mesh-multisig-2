@@ -93,4 +93,5 @@ export const createProposal = async (
   const signedTx = await wallet.signTxReturnFullTx(txHex);
   const txHash = await submitter.submitTx(signedTx);
   console.log("Transaction submitted with hash:", txHash);
+  return txHash;
 };
