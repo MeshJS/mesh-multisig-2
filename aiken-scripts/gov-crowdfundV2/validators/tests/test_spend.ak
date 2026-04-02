@@ -14,9 +14,8 @@ use tests/test_utils.{
   add_proposal_procedure, mock_auth_token, mock_crowdfund_address,
   mock_crowdfund_param, mock_deadline, mock_delegate_pool_id,
   mock_drep_register_deposit, mock_fundraise_target, mock_funds_controlled,
-  mock_gov_action_hash, mock_gov_action_period, mock_gov_address,
-  mock_gov_deposit, mock_proposer_key_hash, mock_share_token, mock_stake_cred,
-  mock_stake_hash, mock_stake_register_deposit,
+  mock_gov_action_period, mock_gov_address, mock_gov_deposit, mock_share_token,
+  mock_stake_cred, mock_stake_hash, mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, Proposed, RegisterCerts}
 
@@ -214,13 +213,6 @@ test s1_spend_success_reg_cert() {
     )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -257,13 +249,6 @@ test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -305,13 +290,6 @@ test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
     )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -356,13 +334,6 @@ test s1_spend_fail_reg_cert_with_more_than_one_output() fail {
     )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -390,13 +361,6 @@ test s1_spend_fail_reg_cert_with_incorrect_output_datum() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -424,13 +388,6 @@ test s1_spend_fail_reg_cert_with_output_value_not_clean() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -458,13 +415,6 @@ test s1_spend_fail_reg_cert_with_incorrect_output_value() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -492,13 +442,6 @@ test s1_spend_fail_reg_cert_with_stake_cert_not_reg() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -526,13 +469,6 @@ test s1_spend_fail_reg_cert_with_drep_cert_not_reg() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -560,13 +496,6 @@ test s1_spend_fail_reg_cert_with_drep_deposit_incorrect() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -594,13 +523,6 @@ test s1_spend_fail_reg_cert_with_stake_not_delegated() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -628,13 +550,6 @@ test s1_spend_fail_reg_cert_with_vote_not_delegated() {
     )
 
   !gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -662,13 +577,6 @@ test s1_spend_succeed_reg_cert_with_gov_not_proposed() {
     )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),

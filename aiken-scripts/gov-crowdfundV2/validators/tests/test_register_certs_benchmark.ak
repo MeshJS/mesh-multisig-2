@@ -15,9 +15,9 @@ use tests/test_utils.{
   add_proposal_procedure, mock_auth_token, mock_crowdfund_address,
   mock_crowdfund_param, mock_deadline, mock_delegate_pool_id,
   mock_drep_register_deposit, mock_fundraise_target, mock_funds_controlled,
-  mock_gov_action_hash, mock_gov_action_period, mock_gov_address,
-  mock_gov_address_with_stake, mock_gov_deposit, mock_proposer_key_hash,
-  mock_share_token, mock_stake_cred, mock_stake_register_deposit,
+  mock_gov_action_period, mock_gov_address, mock_gov_address_with_stake,
+  mock_gov_deposit, mock_share_token, mock_stake_cred,
+  mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, RegisterCerts}
 
@@ -132,13 +132,6 @@ test register_certs_with_crowdfund_output() {
   let tx = mock_register_certs_tx_realistic(True)
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -166,13 +159,6 @@ test register_certs_without_proposal() {
   let tx = mock_register_certs_tx_realistic(False)
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -201,13 +187,6 @@ test register_certs_with_proposal_memory_test() {
   let tx = mock_register_certs_tx_realistic(True)
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -235,13 +214,6 @@ test register_certs_without_proposal_memory_test() {
   let tx = mock_register_certs_tx_realistic(False)
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -356,13 +328,6 @@ test register_certs_realistic_datum_values() {
         )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),
@@ -472,13 +437,6 @@ test register_certs_realistic_memory_test() {
         )
 
   gcf_spend_validator.gCf_spend.spend(
-    mock_auth_token,
-    mock_proposer_key_hash,
-    mock_gov_action_hash(),
-    mock_delegate_pool_id,
-    mock_stake_register_deposit,
-    mock_drep_register_deposit,
-    mock_gov_deposit,
     Some(input_datum),
     RegisterCerts,
     mock_utxo_ref(0, 0),

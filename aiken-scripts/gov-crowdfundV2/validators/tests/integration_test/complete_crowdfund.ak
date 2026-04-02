@@ -11,11 +11,8 @@ use mocktail.{
 use share_token/mint as share_token_mint
 use tests/test_utils.{
   mock_auth_token, mock_completion_script, mock_crowdfund_datum,
-  mock_current_fundraised_amount, mock_delegate_pool_id,
-  mock_drep_register_deposit, mock_fee_address, mock_fundraise_target,
-  mock_gov_action_hash, mock_gov_address, mock_gov_deposit, mock_min_charge,
-  mock_proposer_key_hash, mock_share_token, mock_stake_hash,
-  mock_stake_register_deposit,
+  mock_current_fundraised_amount, mock_fee_address, mock_fundraise_target,
+  mock_gov_address, mock_min_charge, mock_share_token, mock_stake_hash,
 }
 // Spend validator uses own_input.address; RegisterCerts needs stake_credential (get_inline_credential)
 use types.{CrowdfundGovRedeemer, RMint, RegisterCerts}
@@ -134,13 +131,6 @@ fn check_all_scripts(
 
   let check_auth_spend =
     gcf_spend_validator.gCf_spend.spend(
-      mock_auth_token,
-      mock_proposer_key_hash,
-      mock_gov_action_hash(),
-      mock_delegate_pool_id,
-      mock_stake_register_deposit,
-      mock_drep_register_deposit,
-      mock_gov_deposit,
       Some(mock_crowdfund_datum(mock_current_fundraised_amount, False)),
       auth_token_redeemer,
       mock_utxo_ref(0, 0),

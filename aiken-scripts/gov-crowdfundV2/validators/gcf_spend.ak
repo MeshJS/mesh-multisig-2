@@ -1,4 +1,4 @@
-use cardano/assets.{Lovelace, PolicyId, lovelace_of}
+use cardano/assets.{lovelace_of}
 use cardano/certificate.{Registered}
 use cardano/governance.{DelegateRepresentative, GovernanceActionId}
 use cardano/transaction.{OutputReference, Transaction, find_input}
@@ -22,16 +22,7 @@ use utils.{
 }
 
 // Unified spending validator handling both crowdfunding and governance operations
-validator gCf_spend(
-  auth_token: PolicyId,
-  proposer_key_hash: ByteArray,
-  gov_action_hash: ByteArray,
-  delegate_pool_id: ByteArray,
-  // dynamic deposit parameters to avoid hardcoding values
-  stake_register_deposit: Lovelace,
-  drep_register_deposit: Lovelace,
-  gov_deposit: Lovelace,
-) {
+validator gCf_spend {
   spend(
     datum_opt: Option<CrowdfundGovDatum>,
     redeemer: CrowdfundGovRedeemer,
@@ -53,7 +44,15 @@ validator gCf_spend(
     expect Some(auth_input_datum) = datum_opt
     let auth_input_state: CrowdfundState = auth_input_datum.crowdfund_state
     let auth_input_param: CrowdfundParam = auth_input_datum.crowdfund_param
-
+    let CrowdfundParam {
+      auth_token,
+      proposer_key_hash,
+      gov_action_hash,
+      delegate_pool_id,
+      stake_register_deposit,
+      drep_register_deposit,
+      gov_deposit,
+    } = auth_input_param
     let current_address = own_input.output.address
 
     // check only 1 auth token input from current address
