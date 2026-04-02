@@ -6,8 +6,10 @@ use tests/test_utils.{
   mock_auth_token, mock_crowdfund_gov_address, mock_fundraise_target,
   mock_stake_hash,
 }
-use types.{Deregister,
-  DeregisterCerts, ProposeGovAction, Register, RegisterCerts, VoteOnGovAction}
+use types.{
+  Deregister, DeregisterCerts, ProposeGovAction, Register, RegisterCerts,
+  VoteOnGovAction,
+}
 
 type StartTestCase {
   is_only_one_spend_inputed: Bool,

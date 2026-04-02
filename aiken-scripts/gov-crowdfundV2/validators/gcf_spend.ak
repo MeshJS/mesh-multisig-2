@@ -9,8 +9,9 @@ use cocktail.{
 }
 use types.{
   ContributeFund, ContributorWithdrawal, Crowdfund, CrowdfundGovDatum,
-  CrowdfundGovRedeemer, DeregisterCerts, ProposeGovAction, Proposed, Refundable,
-  RegisterCerts, RemoveEmptyInstance, VoteOnGovAction, Voted,
+  CrowdfundGovRedeemer, CrowdfundParam, CrowdfundState, DeregisterCerts,
+  ProposeGovAction, Proposed, Refundable, RegisterCerts, RemoveEmptyInstance,
+  VoteOnGovAction, Voted,
 }
 use utils.{
   check_fundraise_target, check_lovelace_diff, check_proposal_procedure,
@@ -50,6 +51,8 @@ validator gCf_spend(
     } = self
     expect Some(own_input) = find_input(inputs, input)
     expect Some(auth_input_datum) = datum_opt
+    let auth_input_state: CrowdfundState = auth_input_datum.crowdfund_state
+    let auth_input_param: CrowdfundParam = auth_input_datum.crowdfund_param
 
     let current_address = own_input.output.address
 
@@ -60,7 +63,7 @@ validator gCf_spend(
     when redeemer is {
       // Crowdfunding: Add funds to active campaign, mint proportional share tokens
       ContributeFund ->
-        when auth_input_datum is {
+        when auth_input_state is {
           Crowdfund {
             stake_cred,
             share_token,
@@ -80,8 +83,10 @@ validator gCf_spend(
             let lovelace_from_auth_output = auth_output.value |> lovelace_of()
             expect auth_output_datum_raw: CrowdfundGovDatum =
               output_inline_datum(auth_output)
+            let auth_output_state: CrowdfundState =
+              auth_output_datum_raw.crowdfund_state
 
-            when auth_output_datum_raw is {
+            when auth_output_state is {
               Crowdfund {
                 current_fundraised_amount: output_current_fundraised_amount,
                 ..
@@ -100,16 +105,19 @@ validator gCf_spend(
                 let validity_check = valid_before(validity_range, deadline)
 
                 let output_datum_check =
-                  auth_output_datum_raw == Crowdfund {
-                    stake_cred,
-                    share_token,
-                    crowdfund_address,
-                    fundraise_target,
-                    current_fundraised_amount: input_current_fundraised_amount + fundraise_added,
-                    allow_over_subscription,
-                    deadline,
-                    expiry_buffer,
-                    min_charge,
+                  auth_output_datum_raw == CrowdfundGovDatum {
+                    crowdfund_state: Crowdfund {
+                      stake_cred,
+                      share_token,
+                      crowdfund_address,
+                      fundraise_target,
+                      current_fundraised_amount: input_current_fundraised_amount + fundraise_added,
+                      allow_over_subscription,
+                      deadline,
+                      expiry_buffer,
+                      min_charge,
+                    },
+                    crowdfund_param: auth_input_param,
                   }
 
                 let is_auth_output_value_clean =
@@ -148,7 +156,7 @@ validator gCf_spend(
 
         // Extract share_token and build expected output datum based on input datum type
         let (share_token, eligibility_check, output_datum_check) =
-          when auth_input_datum is {
+          when auth_input_state is {
             Crowdfund {
               stake_cred,
               share_token,
@@ -164,16 +172,19 @@ validator gCf_spend(
                 valid_after(validity_range, deadline + expiry_buffer)
               let fund_check = current_fundraised_amount <= fundraise_target
               let expected_datum =
-                Crowdfund {
-                  stake_cred,
-                  share_token,
-                  crowdfund_address,
-                  fundraise_target,
-                  current_fundraised_amount: current_fundraised_amount + lovelace_withdrawn,
-                  allow_over_subscription,
-                  deadline,
-                  expiry_buffer,
-                  min_charge,
+                CrowdfundGovDatum {
+                  crowdfund_state: Crowdfund {
+                    stake_cred,
+                    share_token,
+                    crowdfund_address,
+                    fundraise_target,
+                    current_fundraised_amount: current_fundraised_amount + lovelace_withdrawn,
+                    allow_over_subscription,
+                    deadline,
+                    expiry_buffer,
+                    min_charge,
+                  },
+                  crowdfund_param: auth_input_param,
                 }
               (
                 share_token,
@@ -183,10 +194,13 @@ validator gCf_spend(
             }
             Refundable { stake_cred, share_token, funds_controlled } -> {
               let expected_datum =
-                Refundable {
-                  stake_cred,
-                  share_token,
-                  funds_controlled: funds_controlled + lovelace_withdrawn,
+                CrowdfundGovDatum {
+                  crowdfund_state: Refundable {
+                    stake_cred,
+                    share_token,
+                    funds_controlled: funds_controlled + lovelace_withdrawn,
+                  },
+                  crowdfund_param: auth_input_param,
                 }
               (share_token, True, auth_output_datum == expected_datum)
             }
@@ -203,7 +217,7 @@ validator gCf_spend(
 
       // Governance: Register certificates and propose (Crowdfund → Crowdfund) - combines RegisterStake, RegisterDrep, and ProposeGovAction
       RegisterCerts ->
-        when auth_input_datum is {
+        when auth_input_state is {
           Crowdfund { stake_cred, .. } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
@@ -256,7 +270,7 @@ validator gCf_spend(
 
       // Governance: Submit governance proposal (Crowdfund → Proposed)
       ProposeGovAction ->
-        when auth_input_datum is {
+        when auth_input_state is {
           Crowdfund {
             stake_cred,
             share_token,
@@ -270,11 +284,14 @@ validator gCf_spend(
             let lovelace_check =
               check_lovelace_diff(only_input, only_output, -gov_deposit)
             let output_datum_check =
-              only_output_datum == Proposed {
-                stake_cred,
-                share_token,
-                funds_controlled: current_fundraised_amount,
-                deadline,
+              only_output_datum == CrowdfundGovDatum {
+                crowdfund_state: Proposed {
+                  stake_cred,
+                  share_token,
+                  funds_controlled: current_fundraised_amount,
+                  deadline,
+                },
+                crowdfund_param: auth_input_param,
               }
             let proposal_check =
               check_proposal_procedure(
@@ -291,7 +308,7 @@ validator gCf_spend(
 
       // Governance: Record vote on proposal (Proposed → Voted)
       VoteOnGovAction ->
-        when auth_input_datum is {
+        when auth_input_state is {
           Proposed { stake_cred, share_token, funds_controlled, deadline } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
@@ -303,12 +320,15 @@ validator gCf_spend(
                 proposal_procedure: 0,
               }
             let output_datum_check =
-              only_output_datum == Voted {
-                stake_cred,
-                share_token,
-                funds_controlled,
-                gov_tx_id,
-                deadline,
+              only_output_datum == CrowdfundGovDatum {
+                crowdfund_state: Voted {
+                  stake_cred,
+                  share_token,
+                  funds_controlled,
+                  gov_tx_id,
+                  deadline,
+                },
+                crowdfund_param: auth_input_param,
               }
 
             value_check? && output_datum_check? && is_value_clean? && check_vote(
@@ -322,7 +342,7 @@ validator gCf_spend(
 
       // Governance: Deregister certificates after governance period (Voted/Proposed/Crowdfund → Refundable)
       DeregisterCerts ->
-        when auth_input_datum is {
+        when auth_input_state is {
           Voted { stake_cred, share_token, funds_controlled, deadline, .. } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
@@ -336,10 +356,13 @@ validator gCf_spend(
                 stake_register_deposit + drep_register_deposit + gov_deposit,
               )
             let output_datum_check =
-              only_output_datum == Refundable {
-                stake_cred,
-                share_token,
-                funds_controlled,
+              only_output_datum == CrowdfundGovDatum {
+                crowdfund_state: Refundable {
+                  stake_cred,
+                  share_token,
+                  funds_controlled,
+                },
+                crowdfund_param: auth_input_param,
               }
             let unreg_stake_cert_check =
               unregister_stake_certificate(certificates, current_credential)
@@ -365,10 +388,13 @@ validator gCf_spend(
                 stake_register_deposit + drep_register_deposit + gov_deposit,
               )
             let output_datum_check =
-              only_output_datum == Refundable {
-                stake_cred,
-                share_token,
-                funds_controlled,
+              only_output_datum == CrowdfundGovDatum {
+                crowdfund_state: Refundable {
+                  stake_cred,
+                  share_token,
+                  funds_controlled,
+                },
+                crowdfund_param: auth_input_param,
               }
             let unreg_stake_cert_check =
               unregister_stake_certificate(certificates, current_credential)
@@ -404,16 +430,19 @@ validator gCf_spend(
                 stake_register_deposit + drep_register_deposit,
               )
             let output_datum_check =
-              only_output_datum == Crowdfund {
-                stake_cred,
-                share_token,
-                crowdfund_address,
-                fundraise_target,
-                current_fundraised_amount,
-                allow_over_subscription,
-                deadline,
-                expiry_buffer,
-                min_charge,
+              only_output_datum == CrowdfundGovDatum {
+                crowdfund_state: Crowdfund {
+                  stake_cred,
+                  share_token,
+                  crowdfund_address,
+                  fundraise_target,
+                  current_fundraised_amount,
+                  allow_over_subscription,
+                  deadline,
+                  expiry_buffer,
+                  min_charge,
+                },
+                crowdfund_param: auth_input_param,
               }
             let unreg_stake_cert_check =
               unregister_stake_certificate(certificates, current_credential)
@@ -437,7 +466,7 @@ validator gCf_spend(
 
         // Extract eligibility check, share_token, and amount to burn based on datum type
         let (eligibility_check, share_token, amount_to_burn) =
-          when auth_input_datum is {
+          when auth_input_state is {
             Refundable {
               stake_cred: _stake_cred,
               share_token,

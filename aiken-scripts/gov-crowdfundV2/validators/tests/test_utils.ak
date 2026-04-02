@@ -9,12 +9,11 @@ use cardano/governance.{
   Voter,
 }
 use cardano/transaction.{Transaction}
-use gov.{VGovernanceAction, VNicePoll}
 use mocktail.{
   mock_policy_id, mock_pub_key_hash, mock_script_hash,
   mock_script_stake_key_hash, mock_tx_hash,
 }
-use types.{Crowdfund, CrowdfundGovDatum}
+use types.{Crowdfund, CrowdfundGovDatum, CrowdfundParam}
 
 pub const mock_auth_token = mock_policy_id(0)
 
@@ -52,16 +51,27 @@ pub fn mock_crowdfund_datum(
   current_fundraised_amount: Int,
   allow_over_subscription: Bool,
 ) -> CrowdfundGovDatum {
-  Crowdfund {
-    stake_cred: mock_stake_cred,
-    share_token: mock_share_token,
-    crowdfund_address: mock_crowdfund_address,
-    fundraise_target: mock_fundraise_target,
-    current_fundraised_amount,
-    allow_over_subscription,
-    deadline: mock_deadline,
-    expiry_buffer: mock_expiry_buffer,
-    min_charge: mock_min_charge,
+  CrowdfundGovDatum {
+    crowdfund_state: Crowdfund {
+      stake_cred: mock_stake_cred,
+      share_token: mock_share_token,
+      crowdfund_address: mock_crowdfund_address,
+      fundraise_target: mock_fundraise_target,
+      current_fundraised_amount,
+      allow_over_subscription,
+      deadline: mock_deadline,
+      expiry_buffer: mock_expiry_buffer,
+      min_charge: mock_min_charge,
+    },
+    crowdfund_param: CrowdfundParam {
+      auth_token: mock_auth_token,
+      proposer_key_hash: mock_proposer_key_hash,
+      gov_action_hash: mock_gov_action_hash(),
+      delegate_pool_id: mock_delegate_pool_id,
+      stake_register_deposit: mock_stake_register_deposit,
+      drep_register_deposit: mock_drep_register_deposit,
+      gov_deposit: mock_gov_deposit,
+    },
   }
 }
 
@@ -91,10 +101,8 @@ pub const mock_gov_action_period = 3600
 
 pub const mock_delegate_pool_id = mock_script_hash(3)
 
-pub const mock_gov_action_vgov: VGovernanceAction = VNicePoll
-
-pub fn mock_gov_action() -> ByteArray {
-  cbor.serialise(mock_gov_action_vgov)
+pub fn mock_gov_action_hash() -> ByteArray {
+  blake2b_256(cbor.serialise(NicePoll))
 }
 
 pub const mock_proposer_key_hash = mock_pub_key_hash(0)
@@ -110,6 +118,17 @@ pub const mock_funds_controlled =
 
 pub const mock_gov_action_id =
   GovernanceActionId { transaction: mock_tx_hash(0), proposal_procedure: 0 }
+
+pub const mock_crowdfund_param =
+  CrowdfundParam {
+    auth_token: mock_auth_token,
+    proposer_key_hash: mock_proposer_key_hash,
+    gov_action_hash: mock_gov_action_hash(),
+    delegate_pool_id: mock_delegate_pool_id,
+    stake_register_deposit: mock_stake_register_deposit,
+    drep_register_deposit: mock_drep_register_deposit,
+    gov_deposit: mock_gov_deposit,
+  }
 
 pub fn add_proposal_procedure(
   tx: Transaction,

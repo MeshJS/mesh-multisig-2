@@ -10,10 +10,12 @@ use mocktail.{
   mocktail_tx, tx_in, tx_in_inline_datum, tx_out, tx_out_inline_datum,
 }
 use tests/test_utils.{
-  mock_auth_token, mock_deadline, mock_delegate_pool_id, mock_fundraise_target,
-  mock_gov_address, mock_share_token, mock_stake_cred, mock_stake_hash,
+  mock_auth_token, mock_deadline, mock_delegate_pool_id,
+  mock_drep_register_deposit, mock_fundraise_target, mock_gov_action_hash,
+  mock_gov_address, mock_gov_deposit, mock_proposer_key_hash, mock_share_token,
+  mock_stake_cred, mock_stake_hash, mock_stake_register_deposit,
 }
-use types.{Crowdfund, CrowdfundGovDatum, Proposed}
+use types.{Crowdfund, CrowdfundGovDatum, CrowdfundParam, Proposed}
 
 // Helper to add multiple wallet inputs (simplified to avoid compilation issues)
 // For now, limit to manual chaining for small numbers
@@ -410,20 +412,26 @@ pub fn build_realistic_register_stake_tx(
       |> add(mock_auth_token, "", 1)
 
   let output_datum: CrowdfundGovDatum =
-    when input_datum is {
+    when input_datum.crowdfund_state is {
       Crowdfund { stake_cred: mock_stake_cred, share_token, deadline, .. } ->
-        Proposed {
-          stake_cred: mock_stake_cred,
-          share_token,
-          funds_controlled,
-          deadline,
+        CrowdfundGovDatum {
+          crowdfund_state: Proposed {
+            stake_cred: mock_stake_cred,
+            share_token,
+            funds_controlled,
+            deadline,
+          },
+          crowdfund_param: input_datum.crowdfund_param,
         }
       _ ->
-        Proposed {
-          stake_cred: mock_stake_cred,
-          share_token: mock_share_token,
-          funds_controlled,
-          deadline: mock_deadline,
+        CrowdfundGovDatum {
+          crowdfund_state: Proposed {
+            stake_cred: mock_stake_cred,
+            share_token: mock_share_token,
+            funds_controlled,
+            deadline: mock_deadline,
+          },
+          crowdfund_param: input_datum.crowdfund_param,
         }
     }
 
@@ -508,15 +516,26 @@ pub fn build_realistic_register_drep_tx(
       |> add(mock_auth_token, "", 1)
 
   let output_datum: CrowdfundGovDatum =
-    when input_datum is {
+    when input_datum.crowdfund_state is {
       Proposed { stake_cred, share_token, deadline, .. } ->
-        Proposed { stake_cred, share_token, funds_controlled, deadline }
+        CrowdfundGovDatum {
+          crowdfund_state: Proposed {
+            stake_cred,
+            share_token,
+            funds_controlled,
+            deadline,
+          },
+          crowdfund_param: input_datum.crowdfund_param,
+        }
       _ ->
-        Proposed {
-          stake_cred: mock_stake_cred,
-          share_token: mock_share_token,
-          funds_controlled,
-          deadline: mock_deadline,
+        CrowdfundGovDatum {
+          crowdfund_state: Proposed {
+            stake_cred: mock_stake_cred,
+            share_token: mock_share_token,
+            funds_controlled,
+            deadline: mock_deadline,
+          },
+          crowdfund_param: input_datum.crowdfund_param,
         }
     }
 
@@ -577,16 +596,27 @@ pub fn build_realistic_register_drep_tx(
 pub fn create_realistic_crowdfund_datum(
   current_fundraised_amount: Int,
 ) -> CrowdfundGovDatum {
-  Crowdfund {
-    stake_cred: mock_stake_cred,
-    share_token: mock_share_token,
-    crowdfund_address: mock_gov_address,
-    fundraise_target: mock_fundraise_target,
-    current_fundraised_amount,
-    allow_over_subscription: False,
-    deadline: mock_deadline,
-    expiry_buffer: 86400,
-    min_charge: 0,
+  CrowdfundGovDatum {
+    crowdfund_state: Crowdfund {
+      stake_cred: mock_stake_cred,
+      share_token: mock_share_token,
+      crowdfund_address: mock_gov_address,
+      fundraise_target: mock_fundraise_target,
+      current_fundraised_amount,
+      allow_over_subscription: False,
+      deadline: mock_deadline,
+      expiry_buffer: 86400,
+      min_charge: 0,
+    },
+    crowdfund_param: CrowdfundParam {
+      auth_token: mock_auth_token,
+      proposer_key_hash: mock_proposer_key_hash,
+      gov_action_hash: mock_gov_action_hash(),
+      delegate_pool_id: mock_delegate_pool_id,
+      stake_register_deposit: mock_stake_register_deposit,
+      drep_register_deposit: mock_drep_register_deposit,
+      gov_deposit: mock_gov_deposit,
+    },
   }
 }
 
@@ -594,10 +624,21 @@ pub fn create_realistic_crowdfund_datum(
 pub fn create_realistic_proposed_datum(
   funds_controlled: Int,
 ) -> CrowdfundGovDatum {
-  Proposed {
-    stake_cred: mock_stake_cred,
-    share_token: mock_share_token,
-    funds_controlled,
-    deadline: mock_deadline,
+  CrowdfundGovDatum {
+    crowdfund_state: Proposed {
+      stake_cred: mock_stake_cred,
+      share_token: mock_share_token,
+      funds_controlled,
+      deadline: mock_deadline,
+    },
+    crowdfund_param: CrowdfundParam {
+      auth_token: mock_auth_token,
+      proposer_key_hash: mock_proposer_key_hash,
+      gov_action_hash: mock_gov_action_hash(),
+      delegate_pool_id: mock_delegate_pool_id,
+      stake_register_deposit: mock_stake_register_deposit,
+      drep_register_deposit: mock_drep_register_deposit,
+      gov_deposit: mock_gov_deposit,
+    },
   }
 }

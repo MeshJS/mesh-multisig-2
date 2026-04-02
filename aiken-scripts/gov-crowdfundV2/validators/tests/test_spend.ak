@@ -11,11 +11,12 @@ use mocktail.{
   mocktail_tx, tx_in, tx_in_inline_datum, tx_out, tx_out_inline_datum,
 }
 use tests/test_utils.{
-  add_proposal_procedure, mock_auth_token, mock_crowdfund_address, mock_deadline,
-  mock_delegate_pool_id, mock_drep_register_deposit, mock_fundraise_target,
-  mock_funds_controlled, mock_gov_action, mock_gov_action_period,
-  mock_gov_address, mock_gov_deposit, mock_proposer_key_hash, mock_share_token,
-  mock_stake_cred, mock_stake_hash, mock_stake_register_deposit,
+  add_proposal_procedure, mock_auth_token, mock_crowdfund_address,
+  mock_crowdfund_param, mock_deadline, mock_delegate_pool_id,
+  mock_drep_register_deposit, mock_fundraise_target, mock_funds_controlled,
+  mock_gov_action_hash, mock_gov_action_period, mock_gov_address,
+  mock_gov_deposit, mock_proposer_key_hash, mock_share_token, mock_stake_cred,
+  mock_stake_hash, mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, Proposed, RegisterCerts}
 
@@ -53,16 +54,19 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
       |> add(mock_auth_token, "", 1)
 
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   // RegisterCerts: output keeps Crowdfund datum, deducts only stake + drep; value must be clean (lovelace + auth only, value_length == 2)
   let output_value =
@@ -81,28 +85,34 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
   // RegisterCerts: output datum stays Crowdfund (same as input), not Proposed
   let output_datum: CrowdfundGovDatum =
     if is_output_datum_correct {
-      Crowdfund {
-        stake_cred: mock_stake_cred,
-        share_token: mock_share_token,
-        crowdfund_address: mock_crowdfund_address,
-        fundraise_target: mock_fundraise_target,
-        current_fundraised_amount: mock_funds_controlled,
-        allow_over_subscription: False,
-        deadline: mock_deadline + mock_gov_action_period,
-        expiry_buffer: 3600 * 24,
-        min_charge: 10,
+      CrowdfundGovDatum {
+        crowdfund_state: Crowdfund {
+          stake_cred: mock_stake_cred,
+          share_token: mock_share_token,
+          crowdfund_address: mock_crowdfund_address,
+          fundraise_target: mock_fundraise_target,
+          current_fundraised_amount: mock_funds_controlled,
+          allow_over_subscription: False,
+          deadline: mock_deadline + mock_gov_action_period,
+          expiry_buffer: 3600 * 24,
+          min_charge: 10,
+        },
+        crowdfund_param: mock_crowdfund_param,
       }
     } else {
-      Crowdfund {
-        stake_cred: mock_stake_cred,
-        share_token: mock_share_token,
-        crowdfund_address: mock_crowdfund_address,
-        fundraise_target: mock_fundraise_target,
-        current_fundraised_amount: mock_funds_controlled + 10,
-        allow_over_subscription: False,
-        deadline: mock_deadline + mock_gov_action_period,
-        expiry_buffer: 3600 * 24,
-        min_charge: 10,
+      CrowdfundGovDatum {
+        crowdfund_state: Crowdfund {
+          stake_cred: mock_stake_cred,
+          share_token: mock_share_token,
+          crowdfund_address: mock_crowdfund_address,
+          fundraise_target: mock_fundraise_target,
+          current_fundraised_amount: mock_funds_controlled + 10,
+          allow_over_subscription: False,
+          deadline: mock_deadline + mock_gov_action_period,
+          expiry_buffer: 3600 * 24,
+          min_charge: 10,
+        },
+        crowdfund_param: mock_crowdfund_param,
       }
     }
 
@@ -172,16 +182,19 @@ fn mock_register_cert_tx(test_case: RegisterCertsTestCase) -> Transaction {
 
 test s1_spend_success_reg_cert() {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx =
     mock_register_cert_tx(
@@ -203,7 +216,7 @@ test s1_spend_success_reg_cert() {
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -217,11 +230,14 @@ test s1_spend_success_reg_cert() {
 
 test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
   let input_datum: CrowdfundGovDatum =
-    Proposed {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      funds_controlled: mock_funds_controlled,
-      deadline: mock_deadline + mock_gov_action_period,
+    CrowdfundGovDatum {
+      crowdfund_state: Proposed {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        funds_controlled: mock_funds_controlled,
+        deadline: mock_deadline + mock_gov_action_period,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx =
     mock_register_cert_tx(
@@ -243,7 +259,7 @@ test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -257,16 +273,19 @@ test s1_spend_fail_reg_cert_with_not_crowdfund_state() {
 
 test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx =
     mock_register_cert_tx(
@@ -288,7 +307,7 @@ test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -301,16 +320,19 @@ test s1_spend_fail_reg_cert_with_more_than_one_input() fail {
 }
 
 fn mock_crowdfund_datum_for_tests() -> CrowdfundGovDatum {
-  Crowdfund {
-    stake_cred: mock_stake_cred,
-    share_token: mock_share_token,
-    crowdfund_address: mock_crowdfund_address,
-    fundraise_target: mock_fundraise_target,
-    current_fundraised_amount: mock_funds_controlled,
-    allow_over_subscription: False,
-    deadline: mock_deadline + mock_gov_action_period,
-    expiry_buffer: 3600 * 24,
-    min_charge: 10,
+  CrowdfundGovDatum {
+    crowdfund_state: Crowdfund {
+      stake_cred: mock_stake_cred,
+      share_token: mock_share_token,
+      crowdfund_address: mock_crowdfund_address,
+      fundraise_target: mock_fundraise_target,
+      current_fundraised_amount: mock_funds_controlled,
+      allow_over_subscription: False,
+      deadline: mock_deadline + mock_gov_action_period,
+      expiry_buffer: 3600 * 24,
+      min_charge: 10,
+    },
+    crowdfund_param: mock_crowdfund_param,
   }
 }
 
@@ -336,7 +358,7 @@ test s1_spend_fail_reg_cert_with_more_than_one_output() fail {
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -370,7 +392,7 @@ test s1_spend_fail_reg_cert_with_incorrect_output_datum() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -404,7 +426,7 @@ test s1_spend_fail_reg_cert_with_output_value_not_clean() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -438,7 +460,7 @@ test s1_spend_fail_reg_cert_with_incorrect_output_value() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -472,7 +494,7 @@ test s1_spend_fail_reg_cert_with_stake_cert_not_reg() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -506,7 +528,7 @@ test s1_spend_fail_reg_cert_with_drep_cert_not_reg() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -540,7 +562,7 @@ test s1_spend_fail_reg_cert_with_drep_deposit_incorrect() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -574,7 +596,7 @@ test s1_spend_fail_reg_cert_with_stake_not_delegated() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -608,7 +630,7 @@ test s1_spend_fail_reg_cert_with_vote_not_delegated() {
   !gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -620,7 +642,7 @@ test s1_spend_fail_reg_cert_with_vote_not_delegated() {
   )
 }
 
-test s1_spend_fail_reg_cert_with_gov_not_proposed() {
+test s1_spend_succeed_reg_cert_with_gov_not_proposed() {
   let input_datum = mock_crowdfund_datum_for_tests()
   let tx =
     mock_register_cert_tx(
@@ -639,10 +661,10 @@ test s1_spend_fail_reg_cert_with_gov_not_proposed() {
       },
     )
 
-  !gcf_spend_validator.gCf_spend.spend(
+  gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,

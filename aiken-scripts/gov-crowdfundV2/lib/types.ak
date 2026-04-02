@@ -1,4 +1,5 @@
 use cardano/address.{Address, Credential}
+use cardano/assets.{Lovelace, PolicyId}
 use cardano/governance.{GovernanceActionId}
 
 pub type CrowdfundGovRedeemer {
@@ -12,6 +13,22 @@ pub type CrowdfundGovRedeemer {
 }
 
 pub type CrowdfundGovDatum {
+  crowdfund_state: CrowdfundState,
+  crowdfund_param: CrowdfundParam,
+}
+
+pub type CrowdfundParam {
+  auth_token: PolicyId,
+  proposer_key_hash: ByteArray,
+  gov_action_hash: ByteArray,
+  delegate_pool_id: ByteArray,
+  // dynamic deposit parameters to avoid hardcoding values
+  stake_register_deposit: Lovelace,
+  drep_register_deposit: Lovelace,
+  gov_deposit: Lovelace,
+}
+
+pub type CrowdfundState {
   Crowdfund {
     stake_cred: Credential,
     share_token: ByteArray,

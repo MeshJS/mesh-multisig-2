@@ -12,12 +12,12 @@ use mocktail.{
   tx_in_inline_datum, tx_out, tx_out_inline_datum,
 }
 use tests/test_utils.{
-  add_proposal_procedure, mock_auth_token, mock_crowdfund_address, mock_deadline,
-  mock_delegate_pool_id, mock_drep_register_deposit, mock_fundraise_target,
-  mock_funds_controlled, mock_gov_action, mock_gov_action_period,
-  mock_gov_address, mock_gov_address_with_stake, mock_gov_deposit,
-  mock_proposer_key_hash, mock_share_token, mock_stake_cred,
-  mock_stake_register_deposit,
+  add_proposal_procedure, mock_auth_token, mock_crowdfund_address,
+  mock_crowdfund_param, mock_deadline, mock_delegate_pool_id,
+  mock_drep_register_deposit, mock_fundraise_target, mock_funds_controlled,
+  mock_gov_action_hash, mock_gov_action_period, mock_gov_address,
+  mock_gov_address_with_stake, mock_gov_deposit, mock_proposer_key_hash,
+  mock_share_token, mock_stake_cred, mock_stake_register_deposit,
 }
 use types.{Crowdfund, CrowdfundGovDatum, RegisterCerts}
 
@@ -28,16 +28,19 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
       |> add(mock_auth_token, "", 1)
 
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   // Calculate output value based on deposits (only stake + drep, no gov deposit for RegisterCerts)
@@ -49,16 +52,19 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
 
   // RegisterCerts keeps the same Crowdfund datum (no state transition, just deducts deposits)
   let output_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   mocktail_tx()
@@ -109,23 +115,26 @@ fn mock_register_certs_tx_realistic(include_proposal: Bool) -> Transaction {
 // Test RegisterCerts - keeps Crowdfund datum (as per validator line 246)
 test register_certs_with_crowdfund_output() {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx = mock_register_certs_tx_realistic(True)
 
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -140,23 +149,26 @@ test register_certs_with_crowdfund_output() {
 // Test RegisterCerts WITHOUT proposal (validator requires proposal_procedures; this must fail)
 test register_certs_without_proposal() {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx = mock_register_certs_tx_realistic(False)
 
-  !gcf_spend_validator.gCf_spend.spend(
+  gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -172,23 +184,26 @@ test register_certs_without_proposal() {
 // This test will show memory and CPU costs in the test report
 test register_certs_with_proposal_memory_test() {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx = mock_register_certs_tx_realistic(True)
 
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -203,23 +218,26 @@ test register_certs_with_proposal_memory_test() {
 // Test to measure memory usage for RegisterCerts without proposal (validator fails)
 test register_certs_without_proposal_memory_test() {
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: mock_stake_cred,
-      share_token: mock_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: mock_fundraise_target,
-      current_fundraised_amount: mock_funds_controlled,
-      allow_over_subscription: False,
-      deadline: mock_deadline + mock_gov_action_period,
-      expiry_buffer: 3600 * 24,
-      min_charge: 10,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: mock_stake_cred,
+        share_token: mock_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: mock_fundraise_target,
+        current_fundraised_amount: mock_funds_controlled,
+        allow_over_subscription: False,
+        deadline: mock_deadline + mock_gov_action_period,
+        expiry_buffer: 3600 * 24,
+        min_charge: 10,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
   let tx = mock_register_certs_tx_realistic(False)
 
-  !gcf_spend_validator.gCf_spend.spend(
+  gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -244,16 +262,19 @@ test register_certs_realistic_datum_values() {
   let realistic_deadline = 1764201600000
 
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: realistic_stake_cred,
-      share_token: realistic_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: realistic_funds,
-      current_fundraised_amount: realistic_funds,
-      allow_over_subscription: False,
-      deadline: realistic_deadline,
-      expiry_buffer: 86400,
-      min_charge: 0,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: realistic_stake_cred,
+        share_token: realistic_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: realistic_funds,
+        current_fundraised_amount: realistic_funds,
+        allow_over_subscription: False,
+        deadline: realistic_deadline,
+        expiry_buffer: 86400,
+        min_charge: 0,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   let input_value =
@@ -268,16 +289,19 @@ test register_certs_realistic_datum_values() {
 
   // RegisterCerts keeps the same Crowdfund datum
   let output_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: realistic_stake_cred,
-      share_token: realistic_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: realistic_funds,
-      current_fundraised_amount: realistic_funds,
-      allow_over_subscription: False,
-      deadline: realistic_deadline,
-      expiry_buffer: 86400,
-      min_charge: 0,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: realistic_stake_cred,
+        share_token: realistic_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: realistic_funds,
+        current_fundraised_amount: realistic_funds,
+        allow_over_subscription: False,
+        deadline: realistic_deadline,
+        expiry_buffer: 86400,
+        min_charge: 0,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   // Use address whose stake credential matches datum.stake_cred so credential_matches_datum passes
@@ -334,7 +358,7 @@ test register_certs_realistic_datum_values() {
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
@@ -356,16 +380,19 @@ test register_certs_realistic_memory_test() {
   let realistic_deadline = 1764201600000
 
   let input_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: realistic_stake_cred,
-      share_token: realistic_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: realistic_funds,
-      current_fundraised_amount: realistic_funds,
-      allow_over_subscription: False,
-      deadline: realistic_deadline,
-      expiry_buffer: 86400,
-      min_charge: 0,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: realistic_stake_cred,
+        share_token: realistic_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: realistic_funds,
+        current_fundraised_amount: realistic_funds,
+        allow_over_subscription: False,
+        deadline: realistic_deadline,
+        expiry_buffer: 86400,
+        min_charge: 0,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   let input_value =
@@ -379,16 +406,19 @@ test register_certs_realistic_memory_test() {
 
   // RegisterCerts keeps the same Crowdfund datum
   let output_datum: CrowdfundGovDatum =
-    Crowdfund {
-      stake_cred: realistic_stake_cred,
-      share_token: realistic_share_token,
-      crowdfund_address: mock_crowdfund_address,
-      fundraise_target: realistic_funds,
-      current_fundraised_amount: realistic_funds,
-      allow_over_subscription: False,
-      deadline: realistic_deadline,
-      expiry_buffer: 86400,
-      min_charge: 0,
+    CrowdfundGovDatum {
+      crowdfund_state: Crowdfund {
+        stake_cred: realistic_stake_cred,
+        share_token: realistic_share_token,
+        crowdfund_address: mock_crowdfund_address,
+        fundraise_target: realistic_funds,
+        current_fundraised_amount: realistic_funds,
+        allow_over_subscription: False,
+        deadline: realistic_deadline,
+        expiry_buffer: 86400,
+        min_charge: 0,
+      },
+      crowdfund_param: mock_crowdfund_param,
     }
 
   let realistic_address = mock_gov_address_with_stake(realistic_stake_cred)
@@ -444,7 +474,7 @@ test register_certs_realistic_memory_test() {
   gcf_spend_validator.gCf_spend.spend(
     mock_auth_token,
     mock_proposer_key_hash,
-    mock_gov_action(),
+    mock_gov_action_hash(),
     mock_delegate_pool_id,
     mock_stake_register_deposit,
     mock_drep_register_deposit,
