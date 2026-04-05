@@ -16,7 +16,11 @@ import {
   address,
   CrowdfundTestUtils,
   drepRegisterDeposit,
+  govDeposit,
+  infoActionCbor,
   mockPoolId,
+  mockPoolIdHash,
+  proposerKeyHash,
   stakeRegisterDeposit,
   totalDeposit,
 } from "./test-utils";
@@ -127,7 +131,7 @@ describe("Crowdfund Contribute", async () => {
       .mintRedeemerValue(conStr0([]), "JSON")
       .mintingScript(authTokenScriptValue.cbor)
       .txOut(crowdfundScriptValue.address, [
-        { unit: "lovelace", quantity: "2000000" },
+        { unit: "lovelace", quantity: "5000000" },
         {
           unit: authTokenPolicyIdValue,
           quantity: "1",
@@ -136,18 +140,29 @@ describe("Crowdfund Contribute", async () => {
       .txOutInlineDatumValue(
         crowdfundScriptValue.datum(
           conStr0([
-            conStr1([{ bytes: stakeHashValue }]),
-            { bytes: shareTokenScriptValue.hash },
             conStr0([
-              conStr1([{ bytes: crowdfundScriptValue.hash }]),
-              conStr1([]),
+              conStr1([{ bytes: stakeHashValue }]),
+              { bytes: shareTokenScriptValue.hash },
+              conStr0([
+                conStr1([{ bytes: crowdfundScriptValue.hash }]),
+                conStr1([]),
+              ]),
+              { int: totalDeposit },
+              { int: 0 },
+              conStr0([]),
+              { int: deadline },
+              { int: 0 },
+              { int: 0 },
             ]),
-            { int: totalDeposit },
-            { int: 0 },
-            conStr0([]),
-            { int: deadline },
-            { int: 0 },
-            { int: 0 },
+            conStr0([
+              { bytes: testUtils.authTokenPolicyId() },
+              { bytes: proposerKeyHash },
+              { bytes: infoActionCbor },
+              { bytes: mockPoolIdHash },
+              { int: stakeRegisterDeposit },
+              { int: drepRegisterDeposit },
+              { int: govDeposit },
+            ]),
           ]),
         ),
         "JSON",
@@ -183,7 +198,7 @@ describe("Crowdfund Contribute", async () => {
         .txOut(crowdfundScriptValue.address, [
           {
             unit: "lovelace",
-            quantity: (2000000 + contributeAmount).toString(),
+            quantity: (5000000 + contributeAmount).toString(),
           },
           {
             unit: authTokenPolicyIdValue,
@@ -193,18 +208,29 @@ describe("Crowdfund Contribute", async () => {
         .txOutInlineDatumValue(
           crowdfundScriptValue.datum(
             conStr0([
-              conStr1([{ bytes: stakeHashValue }]),
-              { bytes: shareTokenScriptValue.hash },
               conStr0([
-                conStr1([{ bytes: crowdfundScriptValue.hash }]),
-                conStr1([]),
+                conStr1([{ bytes: stakeHashValue }]),
+                { bytes: shareTokenScriptValue.hash },
+                conStr0([
+                  conStr1([{ bytes: crowdfundScriptValue.hash }]),
+                  conStr1([]),
+                ]),
+                { int: totalDeposit },
+                { int: contributeAmount },
+                conStr0([]),
+                { int: deadline },
+                { int: 0 },
+                { int: 0 },
               ]),
-              { int: totalDeposit },
-              { int: contributeAmount },
-              conStr0([]),
-              { int: deadline },
-              { int: 0 },
-              { int: 0 },
+              conStr0([
+                { bytes: testUtils.authTokenPolicyId() },
+                { bytes: proposerKeyHash },
+                { bytes: infoActionCbor },
+                { bytes: mockPoolIdHash },
+                { int: stakeRegisterDeposit },
+                { int: drepRegisterDeposit },
+                { int: govDeposit },
+              ]),
             ]),
           ),
           "JSON",
@@ -255,7 +281,7 @@ describe("Crowdfund Contribute", async () => {
             {
               unit: "lovelace",
               quantity: (
-                2000000 +
+                5000000 +
                 contributeAmount -
                 stakeRegisterDeposit -
                 drepRegisterDeposit
@@ -269,18 +295,29 @@ describe("Crowdfund Contribute", async () => {
           .txOutInlineDatumValue(
             crowdfundScriptValue.datum(
               conStr0([
-                conStr1([{ bytes: stakeHashValue }]),
-                { bytes: shareTokenScriptValue.hash },
                 conStr0([
-                  conStr1([{ bytes: crowdfundScriptValue.hash }]),
-                  conStr1([]),
+                  conStr1([{ bytes: stakeHashValue }]),
+                  { bytes: shareTokenScriptValue.hash },
+                  conStr0([
+                    conStr1([{ bytes: crowdfundScriptValue.hash }]),
+                    conStr1([]),
+                  ]),
+                  { int: totalDeposit },
+                  { int: contributeAmount },
+                  conStr0([]),
+                  { int: deadline },
+                  { int: 0 },
+                  { int: 0 },
                 ]),
-                { int: totalDeposit },
-                { int: contributeAmount },
-                conStr0([]),
-                { int: deadline },
-                { int: 0 },
-                { int: 0 },
+                conStr0([
+                  { bytes: testUtils.authTokenPolicyId() },
+                  { bytes: proposerKeyHash },
+                  { bytes: infoActionCbor },
+                  { bytes: mockPoolIdHash },
+                  { int: stakeRegisterDeposit },
+                  { int: drepRegisterDeposit },
+                  { int: govDeposit },
+                ]),
               ]),
             ),
             "JSON",
