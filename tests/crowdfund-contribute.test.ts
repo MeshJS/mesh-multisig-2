@@ -86,6 +86,9 @@ describe("Crowdfund Contribute", async () => {
   const fetcher = new OfflineFetcher("preprod");
   fetcher.addUTxOs(utxos);
 
+  const infoActionHash =
+    "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
+
   const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
     networkId: 0,
     fetcher,
@@ -157,7 +160,7 @@ describe("Crowdfund Contribute", async () => {
             conStr0([
               { bytes: testUtils.authTokenPolicyId() },
               { bytes: proposerKeyHash },
-              { bytes: infoActionCbor },
+              { bytes: infoActionHash },
               { bytes: mockPoolIdHash },
               { int: stakeRegisterDeposit },
               { int: drepRegisterDeposit },
@@ -225,7 +228,7 @@ describe("Crowdfund Contribute", async () => {
               conStr0([
                 { bytes: testUtils.authTokenPolicyId() },
                 { bytes: proposerKeyHash },
-                { bytes: infoActionCbor },
+                { bytes: infoActionHash },
                 { bytes: mockPoolIdHash },
                 { int: stakeRegisterDeposit },
                 { int: drepRegisterDeposit },
@@ -312,7 +315,7 @@ describe("Crowdfund Contribute", async () => {
                 conStr0([
                   { bytes: testUtils.authTokenPolicyId() },
                   { bytes: proposerKeyHash },
-                  { bytes: infoActionCbor },
+                  { bytes: infoActionHash },
                   { bytes: mockPoolIdHash },
                   { int: stakeRegisterDeposit },
                   { int: drepRegisterDeposit },

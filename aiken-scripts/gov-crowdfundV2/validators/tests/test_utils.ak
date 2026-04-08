@@ -175,3 +175,9 @@ test mock_treasury_withdrawal_gov_action_id() {
   trace blake2b_256(cbor.serialise(b))
   True
 }
+
+test mock_crowdfund_datum_test() {
+  let datum = mock_crowdfund_datum(1, False)
+  trace cbor.serialise(datum)
+  True
+}

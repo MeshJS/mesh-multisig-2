@@ -14,8 +14,14 @@ import { Emulator, SlotConfig } from "scalus";
 import {
   address,
   CrowdfundTestUtils,
+  drepRegisterDeposit,
+  govDeposit,
   guardrailScriptCbor,
   guardrailScriptHash,
+  infoActionCbor,
+  mockPoolIdHash,
+  proposerKeyHash,
+  stakeRegisterDeposit,
   totalDeposit,
 } from "./test-utils";
 import { MeshCardanoHeadlessWallet, AddressType } from "@meshsdk/wallet";
@@ -31,49 +37,54 @@ describe("Crowdfund Propose", async () => {
   const shareTokenScriptValue = testUtils.shareTokenScript();
   const stakeHashValue = testUtils.stakeHash();
   const rewardAddressValue = testUtils.rewardAddress();
+  const treasuryWithdrawalProposalHash =
+    "cf959e27d42f404e5779f936dd43540f5ba63a5dc233696021b196a780f4a30b";
 
   const deadline = Date.now() + 1000000000;
 
-  const utxosCustomProposal = (proposalHash: string): UTxO[] => {
-    const crowdfundScript =
-      testUtils.crowdfundScriptCustomProposal(proposalHash);
-    return [
-      {
-        input: {
-          outputIndex: 1,
-          txHash:
-            "6255a7c184fa29431cd19e05ae0feda663e57b47ca1edf749b8def00202ef0f7",
-        },
-        output: {
-          address: address,
-          amount: [
-            { unit: "lovelace", quantity: "2000000" },
-            {
-              unit: "989cfc78fa5215f0a7f3bed669c12e7de088f3044aa6e50581039453",
-              quantity: "100502000000",
-            },
-          ],
-        },
+  const crowdfundScript = testUtils.crowdfundScript();
+
+  const infoActionHash =
+    "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
+
+  const utxos: UTxO[] = [
+    {
+      input: {
+        outputIndex: 1,
+        txHash:
+          "6255a7c184fa29431cd19e05ae0feda663e57b47ca1edf749b8def00202ef0f7",
       },
-      {
-        input: {
-          outputIndex: 0,
-          txHash:
-            "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
-        },
-        output: {
-          address: crowdfundScript.address,
-          amount: [
-            { unit: "lovelace", quantity: "100002000000" },
-            {
-              unit: "bdfc050e3950b2d245b1dc52646d4fbc3264999d5e98fac693e59255",
-              quantity: "1",
-            },
-          ],
-          dataHash:
-            "ad9e77fabf6ac2789829be64f860d8b51d78e3292a50164df32419101039858d",
-          plutusData: serializeData(
-            crowdfundScript.datum(
+      output: {
+        address: address,
+        amount: [
+          { unit: "lovelace", quantity: "2000000" },
+          {
+            unit: "989cfc78fa5215f0a7f3bed669c12e7de088f3044aa6e50581039453",
+            quantity: "100502000000",
+          },
+        ],
+      },
+    },
+    {
+      input: {
+        outputIndex: 0,
+        txHash:
+          "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+      },
+      output: {
+        address: crowdfundScript.address,
+        amount: [
+          { unit: "lovelace", quantity: "100005000000" },
+          {
+            unit: "bdfc050e3950b2d245b1dc52646d4fbc3264999d5e98fac693e59255",
+            quantity: "1",
+          },
+        ],
+        dataHash:
+          "ad9e77fabf6ac2789829be64f860d8b51d78e3292a50164df32419101039858d",
+        plutusData: serializeData(
+          crowdfundScript.datum(
+            conStr0([
               conStr0([
                 conStr1([{ bytes: stakeHashValue }]),
                 { bytes: shareTokenScriptValue.hash },
@@ -88,39 +99,97 @@ describe("Crowdfund Propose", async () => {
                 { int: 0 },
                 { int: 0 },
               ]),
-            ),
-            "JSON",
+              conStr0([
+                { bytes: testUtils.authTokenPolicyId() },
+                { bytes: proposerKeyHash },
+                { bytes: infoActionHash },
+                { bytes: mockPoolIdHash },
+                { int: stakeRegisterDeposit },
+                { int: drepRegisterDeposit },
+                { int: govDeposit },
+              ]),
+            ]),
           ),
-        },
+          "JSON",
+        ),
       },
-      {
-        input: {
-          outputIndex: 1,
-          txHash:
-            "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
-        },
-        output: {
-          address: address,
-          amount: [{ unit: "lovelace", quantity: "899490241122" }],
-        },
+    },
+    {
+      input: {
+        outputIndex: 1,
+        txHash:
+          "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
       },
-      {
-        input: {
-          txHash:
-            "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
-          outputIndex: 2,
-        },
-        output: {
-          address: address,
-          amount: [{ unit: "lovelace", quantity: "1000000000" }],
-          scriptRef: toScriptRef({
-            code: crowdfundScript.cbor,
-            version: "V3",
-          }).toCbor(),
-        },
+      output: {
+        address: address,
+        amount: [{ unit: "lovelace", quantity: "899490241122" }],
       },
-    ];
-  };
+    },
+    {
+      input: {
+        txHash:
+          "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+        outputIndex: 2,
+      },
+      output: {
+        address: address,
+        amount: [{ unit: "lovelace", quantity: "1000000000" }],
+        scriptRef: toScriptRef({
+          code: crowdfundScript.cbor,
+          version: "V3",
+        }).toCbor(),
+      },
+    },
+    {
+      input: {
+        outputIndex: 3,
+        txHash:
+          "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
+      },
+      output: {
+        address: crowdfundScript.address,
+        amount: [
+          { unit: "lovelace", quantity: "100005000000" },
+          {
+            unit: "bdfc050e3950b2d245b1dc52646d4fbc3264999d5e98fac693e59255",
+            quantity: "1",
+          },
+        ],
+        dataHash:
+          "ad9e77fabf6ac2789829be64f860d8b51d78e3292a50164df32419101039858d",
+        plutusData: serializeData(
+          crowdfundScript.datum(
+            conStr0([
+              conStr0([
+                conStr1([{ bytes: stakeHashValue }]),
+                { bytes: shareTokenScriptValue.hash },
+                conStr0([
+                  conStr1([{ bytes: crowdfundScript.hash }]),
+                  conStr1([]),
+                ]),
+                { int: totalDeposit },
+                { int: totalDeposit },
+                conStr0([]),
+                { int: deadline },
+                { int: 0 },
+                { int: 0 },
+              ]),
+              conStr0([
+                { bytes: testUtils.authTokenPolicyId() },
+                { bytes: proposerKeyHash },
+                { bytes: treasuryWithdrawalProposalHash },
+                { bytes: mockPoolIdHash },
+                { int: stakeRegisterDeposit },
+                { int: drepRegisterDeposit },
+                { int: govDeposit },
+              ]),
+            ]),
+          ),
+          "JSON",
+        ),
+      },
+    },
+  ];
 
   const walletMnemonic = [
     "horror",
@@ -150,12 +219,6 @@ describe("Crowdfund Propose", async () => {
   ];
 
   it("should allow proposing a governance info action", async () => {
-    const infoActionHash =
-      "2cf7c62c58601daf1fc7bc289411519b3eda7ced4981d06c387a1063d80e79c2";
-    const crowdfundScript =
-      testUtils.crowdfundScriptCustomProposal(infoActionHash);
-    const utxos = utxosCustomProposal(infoActionHash);
-
     const emulator = new Emulator(
       Buffer.from(utxosToCborMap(utxos), "hex"),
       SlotConfig.preprod,
@@ -198,7 +261,7 @@ describe("Crowdfund Propose", async () => {
       .txOut(crowdfundScript.address, [
         {
           unit: "lovelace",
-          quantity: (2000000).toString(),
+          quantity: (5000000).toString(),
         },
         {
           unit: authTokenPolicyIdValue,
@@ -207,11 +270,22 @@ describe("Crowdfund Propose", async () => {
       ])
       .txOutInlineDatumValue(
         crowdfundScript.datum(
-          conStr1([
-            conStr1([{ bytes: stakeHashValue }]),
-            { bytes: shareTokenScriptValue.hash },
-            { int: 100502000000 },
-            { int: deadline },
+          conStr0([
+            conStr1([
+              conStr1([{ bytes: stakeHashValue }]),
+              { bytes: shareTokenScriptValue.hash },
+              { int: 100502000000 },
+              { int: deadline },
+            ]),
+            conStr0([
+              { bytes: testUtils.authTokenPolicyId() },
+              { bytes: proposerKeyHash },
+              { bytes: infoActionHash },
+              { bytes: mockPoolIdHash },
+              { int: stakeRegisterDeposit },
+              { int: drepRegisterDeposit },
+              { int: govDeposit },
+            ]),
           ]),
         ),
         "JSON",
@@ -232,13 +306,6 @@ describe("Crowdfund Propose", async () => {
   });
 
   it("should allow proposing a governance treasury withdrawal action", async () => {
-    const treasuryWithdrawalProposalHash =
-      "cf959e27d42f404e5779f936dd43540f5ba63a5dc233696021b196a780f4a30b";
-    const crowdfundScript = testUtils.crowdfundScriptCustomProposal(
-      treasuryWithdrawalProposalHash,
-    );
-    const utxos = utxosCustomProposal(treasuryWithdrawalProposalHash);
-
     const emulator = new Emulator(
       Buffer.from(utxosToCborMap(utxos), "hex"),
       SlotConfig.preprod,
@@ -270,7 +337,7 @@ describe("Crowdfund Propose", async () => {
       .spendingPlutusScriptV3()
       .txIn(
         "644a0fcfeeb066c9c63b120ff0b9e07211b6109c5d43bb77cefcc6cd0983a3b0",
-        0,
+        3,
       )
       .txInInlineDatumPresent()
       .txInRedeemerValue(conStr3([]), "JSON")
@@ -281,7 +348,7 @@ describe("Crowdfund Propose", async () => {
       .txOut(crowdfundScript.address, [
         {
           unit: "lovelace",
-          quantity: (2000000).toString(),
+          quantity: (5000000).toString(),
         },
         {
           unit: authTokenPolicyIdValue,
@@ -290,11 +357,22 @@ describe("Crowdfund Propose", async () => {
       ])
       .txOutInlineDatumValue(
         crowdfundScript.datum(
-          conStr1([
-            conStr1([{ bytes: stakeHashValue }]),
-            { bytes: shareTokenScriptValue.hash },
-            { int: 100502000000 },
-            { int: deadline },
+          conStr0([
+            conStr1([
+              conStr1([{ bytes: stakeHashValue }]),
+              { bytes: shareTokenScriptValue.hash },
+              { int: 100502000000 },
+              { int: deadline },
+            ]),
+            conStr0([
+              { bytes: testUtils.authTokenPolicyId() },
+              { bytes: proposerKeyHash },
+              { bytes: treasuryWithdrawalProposalHash },
+              { bytes: mockPoolIdHash },
+              { int: stakeRegisterDeposit },
+              { int: drepRegisterDeposit },
+              { int: govDeposit },
+            ]),
           ]),
         ),
         "JSON",

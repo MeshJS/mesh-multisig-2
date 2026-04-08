@@ -5,21 +5,23 @@ import {
   ConStr0,
   ConStr1,
   MintingBlueprint,
-  PolicyId,
-  ByteString,
   ConStr2,
   ConStr,
   Credential,
+  ByteString,
   PubKeyAddress,
   ScriptAddress,
   Integer,
   Bool,
+  PolicyId,
   SpendingBlueprint,
   WithdrawalBlueprint,
 } from "@meshsdk/core";
 
 const version = "V3";
 const networkId = 0; // 0 for testnet; 1 for mainnet
+// Every spending validator would compile into an address with an staking key hash
+// Recommend replace with your own stake key / script hash
 
 export class GcfAuthMintMintBlueprint extends MintingBlueprint {
   compiledCode: string;
@@ -37,44 +39,13 @@ export class GcfAuthMintMintBlueprint extends MintingBlueprint {
 export class GcfSpendSpendBlueprint extends SpendingBlueprint {
   compiledCode: string;
 
-  constructor(
-    params: [
-      PolicyId,
-      ByteString,
-      ByteString,
-      ByteString,
-      Lovelace,
-      Lovelace,
-      Lovelace,
-    ],
-    stakeKeyHash: string,
-    isStakeScriptCredential: boolean,
-  ) {
+  constructor(stakeKeyHash: string, isStakeScriptCredential: boolean) {
     const compiledCode = blueprint.validators[2]!.compiledCode;
     super(version, networkId, stakeKeyHash, isStakeScriptCredential);
     this.compiledCode = compiledCode;
-    this.paramScript(compiledCode, params, "JSON");
+    this.noParamScript(compiledCode);
   }
 
-  params = (
-    data: [
-      PolicyId,
-      ByteString,
-      ByteString,
-      ByteString,
-      Lovelace,
-      Lovelace,
-      Lovelace,
-    ],
-  ): [
-    PolicyId,
-    ByteString,
-    ByteString,
-    ByteString,
-    Lovelace,
-    Lovelace,
-    Lovelace,
-  ] => data;
   datum = (data: CrowdfundGovDatum): CrowdfundGovDatum => data;
   redeemer = (data: CrowdfundGovRedeemer): CrowdfundGovRedeemer => data;
 }
@@ -124,8 +95,6 @@ export type RMint = ConStr0<[]>;
 
 export type RBurn = ConStr1<[]>;
 
-export type Lovelace = Integer;
-
 export type CrowdfundGovRedeemer =
   | ContributeFund
   | ContributorWithdrawal
@@ -149,7 +118,24 @@ export type DeregisterCerts = ConStr<5, []>;
 
 export type RemoveEmptyInstance = ConStr<6, []>;
 
-export type CrowdfundGovDatum = Crowdfund | Proposed | Voted | Refundable;
+export type CrowdfundGovDatum = ConStr0<
+  [
+    Crowdfund | Proposed | Voted | Refundable,
+    ConStr0<
+      [
+        PolicyId,
+        ByteString,
+        ByteString,
+        ByteString,
+        Lovelace,
+        Lovelace,
+        Lovelace,
+      ]
+    >,
+  ]
+>;
+
+export type CrowdfundState = Crowdfund | Proposed | Voted | Refundable;
 
 export type Crowdfund = ConStr0<
   [
@@ -178,6 +164,12 @@ export type TransactionId = ByteString;
 export type Index = Integer;
 
 export type Refundable = ConStr<3, [Credential, ByteString, Integer]>;
+
+export type CrowdfundParam = ConStr0<
+  [PolicyId, ByteString, ByteString, ByteString, Lovelace, Lovelace, Lovelace]
+>;
+
+export type Lovelace = Integer;
 
 export type PublishRedeemer = Register | Deregister;
 

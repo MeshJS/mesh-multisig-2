@@ -66,54 +66,7 @@ export class CrowdfundTestUtils {
   }
 
   crowdfundScript() {
-    return new GcfSpendSpendBlueprint(
-      [
-        { bytes: this.authTokenPolicyId() },
-        { bytes: proposerKeyHash },
-        { bytes: infoActionCbor },
-        { bytes: mockPoolIdHash },
-        { int: stakeRegisterDeposit },
-        { int: drepRegisterDeposit },
-        { int: govDeposit },
-      ],
-      this.crowdfundStakeScript().hash,
-      true,
-    );
-  }
-
-  crowdfundScriptCustomProposal(proposalCbor: string) {
-    return new GcfSpendSpendBlueprint(
-      [
-        { bytes: this.authTokenPolicyId() },
-        { bytes: proposerKeyHash },
-        { bytes: proposalCbor },
-        { bytes: mockPoolIdHash },
-        { int: stakeRegisterDeposit },
-        { int: drepRegisterDeposit },
-        { int: govDeposit },
-      ],
-      this.crowdfundStakeScript().hash,
-      true,
-    );
-  }
-
-  crowdfundScriptCustomGovDeposit(
-    proposalCbor: string,
-    govDepositAmount: number,
-  ) {
-    return new GcfSpendSpendBlueprint(
-      [
-        { bytes: this.authTokenPolicyId() },
-        { bytes: proposerKeyHash },
-        { bytes: proposalCbor },
-        { bytes: mockPoolIdHash },
-        { int: stakeRegisterDeposit },
-        { int: drepRegisterDeposit },
-        { int: govDepositAmount },
-      ],
-      this.crowdfundStakeScript().hash,
-      true,
-    );
+    return new GcfSpendSpendBlueprint(this.crowdfundStakeScript().hash, true);
   }
 
   shareTokenScript() {

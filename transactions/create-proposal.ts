@@ -1,5 +1,4 @@
 import { totalDeposit } from "@/tests/test-utils";
-import { infoActionDatum } from "@/utils/proposal";
 import { CrowdFundScript } from "@/utils/scripts";
 import {
   conStr0,
@@ -42,6 +41,10 @@ export const createProposal = async (
     paymentKeyHash,
     proposalHash,
   );
+  const authTokenScript = scripts.authTokenScript();
+  const crowdfundStakeScript = scripts.crowdfundStakeScript();
+  const crowdfundScript = scripts.crowdfundScript();
+  const shareTokenScript = scripts.shareTokenScript();
 
   const txBuilder = new MeshTxBuilder({
     fetcher: fetcher,
@@ -55,8 +58,8 @@ export const createProposal = async (
     .mintPlutusScriptV3()
     .mint("1", scripts.authTokenPolicyId(), "")
     .mintRedeemerValue(conStr0([]), "JSON")
-    .mintingScript(scripts.authTokenScript().cbor)
-    .txOut(scripts.crowdfundScript().address, [
+    .mintingScript(authTokenScript.cbor)
+    .txOut(crowdfundScript.address, [
       { unit: "lovelace", quantity: "2000000" },
       {
         unit: scripts.authTokenPolicyId(),
@@ -69,11 +72,8 @@ export const createProposal = async (
         .datum(
           conStr0([
             conStr1([{ bytes: scripts.stakeHash() }]),
-            { bytes: scripts.shareTokenScript().hash },
-            conStr0([
-              conStr1([{ bytes: scripts.crowdfundScript().hash }]),
-              conStr1([]),
-            ]),
+            { bytes: shareTokenScript.hash },
+            conStr0([conStr1([{ bytes: crowdfundScript.hash }]), conStr1([])]),
             { int: totalDeposit },
             { int: 0 },
             conStr0([]),
@@ -84,8 +84,8 @@ export const createProposal = async (
         ),
       "JSON",
     )
-    .txOut(scripts.crowdfundScript().address, [])
-    .txOutReferenceScript(scripts.crowdfundScript().cbor)
+    .txOut(crowdfundScript.address, [])
+    .txOutReferenceScript(crowdfundScript.cbor)
     .txInCollateral(utxos[0].input.txHash, utxos[0].input.outputIndex)
     .changeAddress(walletAddress)
     .complete();
@@ -93,5 +93,35 @@ export const createProposal = async (
   const signedTx = await wallet.signTxReturnFullTx(txHex);
   const txHash = await submitter.submitTx(signedTx);
   console.log("Transaction submitted with hash:", txHash);
+
+  let savedScripts: Record<string, unknown> = {};
+  const rawScripts = localStorage.getItem("scripts");
+  if (rawScripts) {
+    try {
+      savedScripts = JSON.parse(rawScripts) as Record<string, unknown>;
+    } catch {
+      savedScripts = {};
+    }
+  }
+  savedScripts[txHash] = {
+    authToken: {
+      cbor: authTokenScript.cbor,
+      hash: authTokenScript.hash,
+    },
+    crowdfundStake: {
+      cbor: crowdfundStakeScript.cbor,
+      hash: crowdfundStakeScript.hash,
+    },
+    crowdfund: {
+      cbor: crowdfundScript.cbor,
+      hash: crowdfundScript.hash,
+    },
+    shareToken: {
+      cbor: shareTokenScript.cbor,
+      hash: shareTokenScript.hash,
+    },
+  };
+  localStorage.setItem("scripts", JSON.stringify(savedScripts));
+
   return txHash;
 };
