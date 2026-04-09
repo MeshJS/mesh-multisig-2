@@ -279,7 +279,6 @@ validator gCf_spend {
           } -> {
             let (only_input, only_output, only_output_datum, is_value_clean) =
               get_single_auth_io(inputs, outputs, current_address, auth_token)
-
             let lovelace_check =
               check_lovelace_diff(only_input, only_output, -gov_deposit)
             let output_datum_check =

@@ -17,7 +17,6 @@ import {
   CrowdfundTestUtils,
   drepRegisterDeposit,
   govDeposit,
-  infoActionCbor,
   mockPoolId,
   mockPoolIdHash,
   proposerKeyHash,
