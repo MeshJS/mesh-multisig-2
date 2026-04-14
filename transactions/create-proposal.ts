@@ -1,4 +1,9 @@
-import { totalDeposit } from "@/tests/test-utils";
+import {
+  drepRegisterDeposit,
+  govDeposit,
+  stakeRegisterDeposit,
+  totalDeposit,
+} from "@/utils/constants";
 import { CrowdFundScript } from "@/utils/scripts";
 import {
   conStr0,
@@ -32,15 +37,7 @@ export const createProposal = async (
   if (!paymentKeyHash) {
     throw new Error("Wallet address does not have a payment key hash");
   }
-  const scripts = new CrowdFundScript(
-    initialTxHash,
-    initialTxIndex,
-    PoolId.toKeyHash(
-      PoolId("pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy"),
-    ),
-    paymentKeyHash,
-    proposalHash,
-  );
+  const scripts = new CrowdFundScript(initialTxHash, initialTxIndex);
   const authTokenScript = scripts.authTokenScript();
   const crowdfundStakeScript = scripts.crowdfundStakeScript();
   const crowdfundScript = scripts.crowdfundScript();
@@ -60,16 +57,15 @@ export const createProposal = async (
     .mintRedeemerValue(conStr0([]), "JSON")
     .mintingScript(authTokenScript.cbor)
     .txOut(crowdfundScript.address, [
-      { unit: "lovelace", quantity: "2000000" },
+      { unit: "lovelace", quantity: "5000000" },
       {
         unit: scripts.authTokenPolicyId(),
         quantity: "1",
       },
     ])
     .txOutInlineDatumValue(
-      scripts
-        .crowdfundScript()
-        .datum(
+      scripts.crowdfundScript().datum(
+        conStr0([
           conStr0([
             conStr1([{ bytes: scripts.stakeHash() }]),
             { bytes: shareTokenScript.hash },
@@ -81,11 +77,25 @@ export const createProposal = async (
             { int: 0 },
             { int: 0 },
           ]),
-        ),
+          conStr0([
+            { bytes: scripts.authTokenPolicyId() },
+            { bytes: paymentKeyHash },
+            { bytes: proposalHash },
+            {
+              bytes: PoolId.toKeyHash(
+                PoolId(
+                  "pool1wvqhvyrgwch4jq9aa84hc8q4kzvyq2z3xr6mpafkqmx9wce39zy",
+                ),
+              ),
+            },
+            { int: stakeRegisterDeposit },
+            { int: drepRegisterDeposit },
+            { int: govDeposit },
+          ]),
+        ]),
+      ),
       "JSON",
     )
-    .txOut(crowdfundScript.address, [])
-    .txOutReferenceScript(crowdfundScript.cbor)
     .txInCollateral(utxos[0].input.txHash, utxos[0].input.outputIndex)
     .changeAddress(walletAddress)
     .complete();
@@ -103,7 +113,7 @@ export const createProposal = async (
       savedScripts = {};
     }
   }
-  savedScripts[txHash] = {
+  savedScripts[authTokenScript.hash] = {
     authToken: {
       cbor: authTokenScript.cbor,
       hash: authTokenScript.hash,

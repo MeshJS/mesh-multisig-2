@@ -5,9 +5,14 @@ import { AddressType, MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { useTheme } from "./theme-provider";
 import { YaciProvider2 } from "@/tests/test-utils";
 import { createProposal } from "@/transactions/create-proposal";
+import { createScriptRef } from "@/transactions/create-script-ref";
 import { infoActionDatum } from "@/utils/proposal";
-import { PlutusData } from "@meshsdk/core-cst";
-import { MeshTxBuilder, UTxO } from "@meshsdk/core";
+import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
+import {
+  contributeProposal,
+  ProposalInfo,
+} from "@/transactions/contribute-proposal";
+import { CrowdfundGovDatum } from "@/types/gcf-spend";
 
 const DEMO_MNEMONIC = [
   "horror",
@@ -43,11 +48,6 @@ type Beneficiary = {
   amount: string;
 };
 
-type ProposalInfo = {
-  utxo: UTxO;
-  fundedAmount: bigint;
-};
-
 const DEFAULT_BENEFICIARY: Beneficiary = { rewardAddress: "", amount: "" };
 
 export default function Home() {
@@ -73,6 +73,8 @@ export default function Home() {
   const [contributeAmounts, setContributeAmounts] = useState<{
     [key: number]: string;
   }>({});
+  const [isCreatingScriptRef, setIsCreatingScriptRef] = useState(false);
+  const [scriptRefTxHash, setScriptRefTxHash] = useState<string | null>(null);
 
   const provider = new YaciProvider2("http://localhost:8080/api/v1");
 
@@ -85,6 +87,11 @@ export default function Home() {
 
         setTxHashes(hashes);
       }
+
+      const savedScriptRef = localStorage.getItem("scriptRef");
+      if (savedScriptRef) {
+        setScriptRefTxHash(savedScriptRef);
+      }
     };
     loadPersistedTransactions();
   }, []);
@@ -95,14 +102,27 @@ export default function Home() {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             const txInfo = (await provider.fetchUTxOs(hash, 0))[0];
+            const datumJson: CrowdfundGovDatum = fromPlutusDataToJson(
+              PlutusData.fromCbor(txInfo.output.plutusData!),
+            ) as CrowdfundGovDatum;
+            const authTokenHash = datumJson.fields[1].fields[0].bytes;
+            const requiredFundingField = datumJson.fields[0].fields[3];
+            const requiredFunding =
+              typeof requiredFundingField === "object" &&
+              requiredFundingField !== null &&
+              "int" in requiredFundingField
+                ? requiredFundingField.int
+                : BigInt(0);
+            const scripts = JSON.parse(localStorage.getItem("scripts") || "{}")[
+              authTokenHash
+            ];
+
             return {
               utxo: txInfo,
-              fundedAmount:
-                PlutusData.fromCbor(txInfo.output.plutusData!)
-                  .asConstrPlutusData()
-                  ?.getData()
-                  .get(4)
-                  ?.asInteger() ?? BigInt(0),
+              fundedAmount: datumJson.fields[0].fields[4]?.int ?? BigInt(0),
+              requiredFunding,
+              deadline: datumJson.fields[0].fields[6]?.int ?? BigInt(0),
+              scripts,
             };
           } catch (error) {
             console.log(
@@ -194,8 +214,24 @@ export default function Home() {
       setWalletError("Please enter a contribute amount");
       return;
     }
-    // TODO: Implement contribution logic with amount
-    console.log("Contributing to proposal:", proposalIndex, "Amount:", amount);
+    const currentProposalInfo = proposalInfo[proposalIndex];
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+    const updatedTxHash = await contributeProposal(
+      wallet,
+      provider,
+      provider,
+      provider,
+      currentProposalInfo,
+      Number(amount),
+    );
+    setTxHashes((prev) =>
+      prev.map((hash) =>
+        hash === currentProposalInfo.utxo.input.txHash ? updatedTxHash : hash,
+      ),
+    );
   };
 
   const handleProposalSubmit = async (
@@ -203,13 +239,18 @@ export default function Home() {
   ) => {
     e.preventDefault();
     if (proposalType === "info") {
+      // If wallet is not connected, or datenime is invalid, show error
       if (!wallet) {
         setWalletError("Please connect your wallet first.");
         return;
       }
+      if (isNaN(new Date(deadline).getTime())) {
+        setWalletError("Please enter a valid deadline.");
+        return;
+      }
       const txHash = await createProposal(
         wallet,
-        Date.now() + 1000 * 60 * 60 * 24, // 24 hours from now
+        new Date(deadline).getTime(),
         provider,
         provider,
         provider,
@@ -231,6 +272,31 @@ export default function Home() {
     }
   };
 
+  const handleCreateScriptRef = async () => {
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+
+    try {
+      setIsCreatingScriptRef(true);
+      setWalletError(null);
+      const txHash = await createScriptRef(
+        wallet,
+        provider,
+        provider,
+        provider,
+      );
+      setScriptRefTxHash(txHash);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create script ref.";
+      setWalletError(message);
+    } finally {
+      setIsCreatingScriptRef(false);
+    }
+  };
+
   // Shared input class helpers
   const inputClass = isDark
     ? "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
@@ -239,6 +305,9 @@ export default function Home() {
   const labelClass = isDark
     ? "mb-1 block text-xs font-medium text-zinc-400"
     : "mb-1 block text-xs font-medium text-zinc-500";
+
+  const canSubmitGovernanceAction = (info: ProposalInfo) =>
+    BigInt(info.fundedAmount) >= BigInt(info.requiredFunding);
 
   return (
     <div
@@ -327,7 +396,7 @@ export default function Home() {
       {walletAddress ? (
         <main className="mx-auto px-6 py-8">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            {/* Proposal Transactions Section */}
+            {/* Pending Proposal Section */}
             {proposalInfo.length > 0 ? (
               <div>
                 <p
@@ -337,7 +406,7 @@ export default function Home() {
                       : "text-sm text-zinc-600 mb-4"
                   }
                 >
-                  Proposal transactions:
+                  Pending Proposals:
                 </p>
                 <div className="space-y-4">
                   {proposalInfo.map((info, i) => (
@@ -367,6 +436,35 @@ export default function Home() {
                       >
                         <strong>Funded Amount:</strong> (
                         {(Number(info.fundedAmount) / 1_000_000).toFixed(2)} ₳)
+                      </div>
+                      <div
+                        className={
+                          isDark
+                            ? "text-sm text-zinc-300 mb-3 p-2 bg-zinc-950 rounded"
+                            : "text-sm text-zinc-700 mb-3 p-2 bg-white rounded"
+                        }
+                      >
+                        <strong>Required Funding:</strong> (
+                        {(Number(info.requiredFunding) / 1_000_000).toFixed(2)}{" "}
+                        ₳)
+                      </div>
+                      <div
+                        className={
+                          isDark
+                            ? "text-sm text-zinc-300 mb-3 p-2 bg-zinc-950 rounded"
+                            : "text-sm text-zinc-700 mb-3 p-2 bg-white rounded"
+                        }
+                      >
+                        <strong>Deadline:</strong>{" "}
+                        {(() => {
+                          const d = new Date(Number(info.deadline));
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          return `${pad(d.getDate())}/${pad(
+                            d.getMonth() + 1,
+                          )}/${d.getFullYear()} ${pad(d.getHours())}:${pad(
+                            d.getMinutes(),
+                          )}:${pad(d.getSeconds())}`;
+                        })()}
                       </div>
                       <pre
                         className={
@@ -407,6 +505,20 @@ export default function Home() {
                           Contribute
                         </button>
                       </div>
+                      {canSubmitGovernanceAction(info) ? (
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            className={
+                              isDark
+                                ? "rounded-md bg-emerald-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-emerald-200"
+                                : "rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600"
+                            }
+                          >
+                            Submit Governance Action
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -415,6 +527,57 @@ export default function Home() {
 
             {/* Form Section */}
             <div>
+              <div
+                className={
+                  isDark
+                    ? "mb-8 rounded-lg border border-zinc-800 bg-zinc-900 p-4"
+                    : "mb-8 rounded-lg border border-zinc-200 bg-zinc-50 p-4"
+                }
+              >
+                <h2
+                  className={
+                    isDark
+                      ? "mb-2 text-lg font-semibold text-zinc-100"
+                      : "mb-2 text-lg font-semibold text-zinc-900"
+                  }
+                >
+                  Create Script Ref
+                </h2>
+                <p
+                  className={
+                    isDark
+                      ? "mb-4 text-sm text-zinc-400"
+                      : "mb-4 text-sm text-zinc-600"
+                  }
+                >
+                  Create and submit a transaction that stores the crowdfund
+                  spending script as a reference script.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCreateScriptRef}
+                  disabled={isCreatingScriptRef}
+                  className={
+                    isDark
+                      ? "rounded-md bg-zinc-100 px-5 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:bg-zinc-400"
+                      : "rounded-md bg-zinc-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
+                  }
+                >
+                  {isCreatingScriptRef ? "Creating..." : "Create script ref"}
+                </button>
+                {scriptRefTxHash ? (
+                  <p
+                    className={
+                      isDark
+                        ? "mt-3 break-all text-xs text-zinc-400"
+                        : "mt-3 break-all text-xs text-zinc-600"
+                    }
+                  >
+                    Script ref tx: {scriptRefTxHash}
+                  </p>
+                ) : null}
+              </div>
+
               <h2
                 className={
                   isDark

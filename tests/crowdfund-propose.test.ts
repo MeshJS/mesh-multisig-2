@@ -18,7 +18,6 @@ import {
   govDeposit,
   guardrailScriptCbor,
   guardrailScriptHash,
-  infoActionCbor,
   mockPoolIdHash,
   proposerKeyHash,
   stakeRegisterDeposit,

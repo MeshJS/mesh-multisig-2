@@ -6,19 +6,11 @@ import {
 } from "@/types/gcf-spend";
 import { conStr0, resolveScriptHash } from "@meshsdk/core";
 import { RewardAccount, CredentialType, DRepID } from "@meshsdk/core-cst";
-import {
-  stakeRegisterDeposit,
-  drepRegisterDeposit,
-  govDeposit,
-} from "./constants";
 
 export class CrowdFundScript {
   constructor(
     private readonly txHash: string,
     private readonly txIndex: number,
-    private readonly poolIdHash: string,
-    private readonly proposerKeyHash: string,
-    private readonly proposalHash: string,
   ) {}
 
   authTokenScript() {
@@ -45,19 +37,7 @@ export class CrowdFundScript {
   }
 
   crowdfundScript() {
-    return new GcfSpendSpendBlueprint(
-      [
-        { bytes: this.authTokenPolicyId() },
-        { bytes: this.proposerKeyHash },
-        { bytes: this.proposalHash },
-        { bytes: this.poolIdHash },
-        { int: stakeRegisterDeposit },
-        { int: drepRegisterDeposit },
-        { int: govDeposit },
-      ],
-      this.crowdfundStakeScript().hash,
-      true,
-    );
+    return new GcfSpendSpendBlueprint(this.crowdfundStakeScript().hash, true);
   }
 
   shareTokenScript() {

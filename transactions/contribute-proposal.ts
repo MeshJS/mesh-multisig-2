@@ -1,15 +1,11 @@
-import { totalDeposit } from "@/tests/test-utils";
-import { CrowdfundGovDatum } from "@/types/gcf-spend";
+import { Crowdfund, CrowdfundGovDatum } from "@/types/gcf-spend";
 import {
   conStr0,
-  conStr1,
   IEvaluator,
   IFetcher,
   ISubmitter,
   MeshTxBuilder,
   MeshValue,
-  PubKeyAddress,
-  ScriptAddress,
   UTxO,
 } from "@meshsdk/core";
 import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
@@ -17,8 +13,9 @@ import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 
 export type ProposalInfo = {
   utxo: UTxO;
-  fundedAmount: bigint;
-  deadline: bigint;
+  fundedAmount: number | bigint;
+  requiredFunding: number | bigint;
+  deadline: number | bigint;
   scripts: {
     authToken: {
       hash: string;
@@ -51,20 +48,26 @@ export const contributeProposal = async (
   const previousDatum: CrowdfundGovDatum = fromPlutusDataToJson(
     PlutusData.fromCbor(proposalInfo.utxo.output.plutusData),
   ) as CrowdfundGovDatum;
-  const newDatum: CrowdfundGovDatum = conStr0([
-    previousDatum.fields[0],
-    previousDatum.fields[1],
-    previousDatum.fields[2],
-    previousDatum.fields[3],
+  const previousCrowdfundStatus: Crowdfund = previousDatum
+    .fields[0] as unknown as Crowdfund;
+  const newCrowdfundStatus: Crowdfund = conStr0([
+    previousCrowdfundStatus.fields[0],
+    previousCrowdfundStatus.fields[1],
+    previousCrowdfundStatus.fields[2],
+    previousCrowdfundStatus.fields[3],
     {
-      int: (
-        BigInt(previousDatum.fields[4]?.int ?? 0) + BigInt(contributeAmount)
-      ).toString(),
+      int:
+        BigInt(previousCrowdfundStatus.fields[4]?.int ?? 0) +
+        BigInt(contributeAmount),
     },
-    previousDatum.fields[5],
-    previousDatum.fields[6],
-    previousDatum.fields[7],
-    previousDatum.fields[8],
+    previousCrowdfundStatus.fields[5],
+    previousCrowdfundStatus.fields[6],
+    previousCrowdfundStatus.fields[7],
+    previousCrowdfundStatus.fields[8],
+  ]);
+  const newDatum: CrowdfundGovDatum = conStr0([
+    newCrowdfundStatus,
+    previousDatum.fields[1],
   ]) as unknown as CrowdfundGovDatum;
 
   const txBuilder = new MeshTxBuilder({
@@ -81,6 +84,12 @@ export const contributeProposal = async (
   if (collateral.length === 0) {
     throw new Error("No collateral available in the wallet");
   }
+
+  // Get script ref from local storage
+  const scriptRef = localStorage.getItem("scriptRef");
+  if (!scriptRef) {
+    throw new Error("Script reference not found in local storage");
+  }
   const txHex = await txBuilder
     .selectUtxosFrom(utxos)
     .txInCollateral(collateral[0].input.txHash, collateral[0].input.outputIndex)
@@ -88,10 +97,7 @@ export const contributeProposal = async (
     .txIn(proposalInfo.utxo.input.txHash, proposalInfo.utxo.input.outputIndex)
     .txInRedeemerValue(conStr0([]), "JSON")
     .txInInlineDatumPresent()
-    .spendingTxInReference(
-      proposalInfo.utxo.input.txHash,
-      proposalInfo.utxo.input.outputIndex + 1,
-    )
+    .spendingTxInReference(scriptRef, 0)
     .txOut(
       proposalInfo.utxo.output.address,
       MeshValue.fromAssets(proposalInfo.utxo.output.amount)
@@ -117,12 +123,26 @@ export const contributeProposal = async (
     .changeAddress(walletAddress)
     .complete();
   const signedTx = await wallet.signTxReturnFullTx(txHex);
-  let txHash;
+  let txHash: string;
   try {
     txHash = await submitter.submitTx(signedTx);
     console.log("Transaction submitted with hash:", txHash);
+
+    const savedProposalTxHashes = localStorage.getItem("proposalTxHashes");
+    const parsedProposalTxHashes: string[] = savedProposalTxHashes
+      ? (JSON.parse(savedProposalTxHashes) as string[])
+      : [];
+    const updatedProposalTxHashes = parsedProposalTxHashes.map((hash) =>
+      hash === proposalInfo.utxo.input.txHash ? txHash : hash,
+    );
+    localStorage.setItem(
+      "proposalTxHashes",
+      JSON.stringify(updatedProposalTxHashes),
+    );
   } catch (e) {
     console.error("Failed to submit transaction:", e);
     throw e;
   }
+
+  return txHash;
 };
