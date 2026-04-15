@@ -8,7 +8,12 @@ import {
   MeshValue,
   UTxO,
 } from "@meshsdk/core";
-import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
+import {
+  fromPlutusDataToJson,
+  fromTxUnspentOutput,
+  PlutusData,
+  Serialization,
+} from "@meshsdk/core-cst";
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 
 export type ProposalInfo = {
@@ -17,6 +22,10 @@ export type ProposalInfo = {
   requiredFunding: number | bigint;
   deadline: number | bigint;
   scripts: {
+    initialTxHashIndex: {
+      txHash: string;
+      txIndex: number;
+    };
     authToken: {
       hash: string;
       cbor: string;
@@ -80,7 +89,9 @@ export const contributeProposal = async (
   if (!walletAddress) {
     throw new Error("Wallet address not found");
   }
-  const collateral = await wallet.getCollateralMesh();
+  const collateral = (await wallet.getCollateral()).map((c) =>
+    fromTxUnspentOutput(Serialization.TransactionUnspentOutput.fromCbor(c)),
+  );
   if (collateral.length === 0) {
     throw new Error("No collateral available in the wallet");
   }

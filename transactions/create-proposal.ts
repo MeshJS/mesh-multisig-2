@@ -114,6 +114,10 @@ export const createProposal = async (
     }
   }
   savedScripts[authTokenScript.hash] = {
+    initialTxHashIndex: {
+      txHash: initialTxHash,
+      txIndex: initialTxIndex,
+    },
     authToken: {
       cbor: authTokenScript.cbor,
       hash: authTokenScript.hash,

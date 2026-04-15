@@ -12,7 +12,9 @@ import {
   contributeProposal,
   ProposalInfo,
 } from "@/transactions/contribute-proposal";
-import { CrowdfundGovDatum } from "@/types/gcf-spend";
+import { Crowdfund, CrowdfundGovDatum, Proposed } from "@/types/gcf-spend";
+import { registerStakeProposal } from "@/transactions/register-stake";
+import { submitGovActionProposal } from "@/transactions/submit-gov-action";
 
 const DEMO_MNEMONIC = [
   "horror",
@@ -75,6 +77,9 @@ export default function Home() {
   }>({});
   const [isCreatingScriptRef, setIsCreatingScriptRef] = useState(false);
   const [scriptRefTxHash, setScriptRefTxHash] = useState<string | null>(null);
+  const [registeringStake, setRegisteringStake] = useState<{
+    [key: number]: boolean;
+  }>({});
 
   const provider = new YaciProvider2("http://localhost:8080/api/v1");
 
@@ -105,25 +110,43 @@ export default function Home() {
             const datumJson: CrowdfundGovDatum = fromPlutusDataToJson(
               PlutusData.fromCbor(txInfo.output.plutusData!),
             ) as CrowdfundGovDatum;
-            const authTokenHash = datumJson.fields[1].fields[0].bytes;
-            const requiredFundingField = datumJson.fields[0].fields[3];
-            const requiredFunding =
-              typeof requiredFundingField === "object" &&
-              requiredFundingField !== null &&
-              "int" in requiredFundingField
-                ? requiredFundingField.int
-                : BigInt(0);
-            const scripts = JSON.parse(localStorage.getItem("scripts") || "{}")[
-              authTokenHash
-            ];
 
-            return {
-              utxo: txInfo,
-              fundedAmount: datumJson.fields[0].fields[4]?.int ?? BigInt(0),
-              requiredFunding,
-              deadline: datumJson.fields[0].fields[6]?.int ?? BigInt(0),
-              scripts,
-            };
+            const authTokenHash = datumJson.fields[1].fields[0].bytes;
+            if (Number(datumJson.fields[0].constructor) === 0) {
+              const requiredFundingField = datumJson.fields[0].fields[3];
+              const requiredFunding =
+                typeof requiredFundingField === "object" &&
+                requiredFundingField !== null &&
+                "int" in requiredFundingField
+                  ? requiredFundingField.int
+                  : BigInt(0);
+              const scripts = JSON.parse(
+                localStorage.getItem("scripts") || "{}",
+              )[authTokenHash];
+
+              return {
+                utxo: txInfo,
+                fundedAmount: datumJson.fields[0].fields[4]?.int ?? BigInt(0),
+                requiredFunding,
+                deadline: datumJson.fields[0].fields[6]?.int ?? BigInt(0),
+                scripts,
+              };
+            } else if (Number(datumJson.fields[0].constructor) === 1) {
+              const scripts = JSON.parse(
+                localStorage.getItem("scripts") || "{}",
+              )[authTokenHash];
+
+              const proposalStatus: Proposed = datumJson
+                .fields[0] as unknown as Proposed;
+
+              return {
+                utxo: txInfo,
+                fundedAmount: proposalStatus.fields[2]?.int ?? BigInt(0),
+                requiredFunding: proposalStatus.fields[2]?.int ?? BigInt(0),
+                deadline: proposalStatus.fields[3]?.int ?? BigInt(0),
+                scripts,
+              };
+            }
           } catch (error) {
             console.log(
               `Failed to fetch tx info (attempt ${attempt}/${maxRetries}):`,
@@ -294,6 +317,68 @@ export default function Home() {
       setWalletError(message);
     } finally {
       setIsCreatingScriptRef(false);
+    }
+  };
+
+  const handleRegisterStake = async (proposalIndex: number) => {
+    const currentProposalInfo = proposalInfo[proposalIndex];
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+
+    try {
+      setWalletError(null);
+      setRegisteringStake((prev) => ({ ...prev, [proposalIndex]: true }));
+      const txHash = await registerStakeProposal(
+        wallet,
+        provider,
+        provider,
+        provider,
+        currentProposalInfo,
+      );
+      setTxHashes((prev) =>
+        prev.map((hash) =>
+          hash === currentProposalInfo.utxo.input.txHash ? txHash : hash,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Register stake transaction is not implemented yet.";
+      setWalletError(message);
+    } finally {
+      setRegisteringStake((prev) => ({ ...prev, [proposalIndex]: false }));
+    }
+  };
+
+  const handleSubmitGovernanceAction = async (proposalIndex: number) => {
+    const currentProposalInfo = proposalInfo[proposalIndex];
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+    try {
+      setWalletError(null);
+      const txHash = await submitGovActionProposal(
+        wallet,
+        provider,
+        provider,
+        provider,
+        currentProposalInfo,
+      );
+      setTxHashes((prev) =>
+        prev.map((hash) =>
+          hash === currentProposalInfo.utxo.input.txHash ? txHash : hash,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Submit governance action transaction is not implemented yet.";
+      setWalletError(message);
     }
   };
 
@@ -506,9 +591,24 @@ export default function Home() {
                         </button>
                       </div>
                       {canSubmitGovernanceAction(info) ? (
-                        <div className="mt-3 flex justify-end">
+                        <div className="mt-3 flex flex-col items-end gap-2">
                           <button
                             type="button"
+                            onClick={() => handleRegisterStake(i)}
+                            disabled={!!registeringStake[i]}
+                            className={
+                              isDark
+                                ? "rounded-md bg-sky-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-70"
+                                : "rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-70"
+                            }
+                          >
+                            {registeringStake[i]
+                              ? "Registering..."
+                              : "Register Stake"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSubmitGovernanceAction(i)}
                             className={
                               isDark
                                 ? "rounded-md bg-emerald-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-emerald-200"
