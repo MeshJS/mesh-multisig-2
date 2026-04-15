@@ -12,9 +12,11 @@ import {
   contributeProposal,
   ProposalInfo,
 } from "@/transactions/contribute-proposal";
-import { Crowdfund, CrowdfundGovDatum, Proposed } from "@/types/gcf-spend";
+import { CrowdfundGovDatum, Proposed, Refundable } from "@/types/gcf-spend";
 import { registerStakeProposal } from "@/transactions/register-stake";
 import { submitGovActionProposal } from "@/transactions/submit-gov-action";
+import { withdrawGovDeposit } from "@/transactions/withdraw-gov-deposit";
+import { MeshValue } from "@meshsdk/core";
 
 const DEMO_MNEMONIC = [
   "horror",
@@ -78,6 +80,9 @@ export default function Home() {
   const [isCreatingScriptRef, setIsCreatingScriptRef] = useState(false);
   const [scriptRefTxHash, setScriptRefTxHash] = useState<string | null>(null);
   const [registeringStake, setRegisteringStake] = useState<{
+    [key: number]: boolean;
+  }>({});
+  const [withdrawingDeposit, setWithdrawingDeposit] = useState<{
     [key: number]: boolean;
   }>({});
 
@@ -146,6 +151,20 @@ export default function Home() {
                 deadline: proposalStatus.fields[3]?.int ?? BigInt(0),
                 scripts,
               };
+            } else if (Number(datumJson.fields[0].constructor) === 3) {
+              const scripts = JSON.parse(
+                localStorage.getItem("scripts") || "{}",
+              )[authTokenHash];
+              const proposalStatus: Refundable = datumJson
+                .fields[0] as unknown as Refundable;
+
+              return {
+                utxo: txInfo,
+                fundedAmount: proposalStatus.fields[2]?.int ?? BigInt(0),
+                requiredFunding: proposalStatus.fields[2]?.int ?? BigInt(0),
+                deadline: BigInt(0),
+                scripts,
+              };
             }
           } catch (error) {
             console.log(
@@ -198,7 +217,10 @@ export default function Home() {
       setWallet(wallet);
 
       const address = await wallet.getChangeAddressBech32();
-      const balance = await wallet.getBalanceMesh();
+      const balance = MeshValue.fromAssets(
+        await wallet.getBalanceMesh(),
+      ).toAssets();
+
       const lovelace =
         balance.find((a) => a.unit === "lovelace")?.quantity ?? "0";
       setWalletAddress(address);
@@ -382,6 +404,40 @@ export default function Home() {
     }
   };
 
+  const handleWithdrawGovDeposit = async (proposalIndex: number) => {
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+    try {
+      setWalletError(null);
+      setWithdrawingDeposit((prev) => ({ ...prev, [proposalIndex]: true }));
+
+      const updatedTxHash = await withdrawGovDeposit(
+        wallet,
+        provider,
+        provider,
+        provider,
+        proposalInfo[proposalIndex],
+      );
+      setTxHashes((prev) =>
+        prev.map((hash) =>
+          hash === proposalInfo[proposalIndex].utxo.input.txHash
+            ? updatedTxHash
+            : hash,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Withdraw governance deposit transaction is not implemented yet.";
+      setWalletError(message);
+    } finally {
+      setWithdrawingDeposit((prev) => ({ ...prev, [proposalIndex]: false }));
+    }
+  };
+
   // Shared input class helpers
   const inputClass = isDark
     ? "w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
@@ -542,6 +598,9 @@ export default function Home() {
                       >
                         <strong>Deadline:</strong>{" "}
                         {(() => {
+                          if (info.deadline === BigInt(0)) {
+                            return "N/A";
+                          }
                           const d = new Date(Number(info.deadline));
                           const pad = (n: number) => String(n).padStart(2, "0");
                           return `${pad(d.getDate())}/${pad(
@@ -616,6 +675,20 @@ export default function Home() {
                             }
                           >
                             Submit Governance Action
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWithdrawGovDeposit(i)}
+                            disabled={!!withdrawingDeposit[i]}
+                            className={
+                              isDark
+                                ? "rounded-md bg-amber-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+                                : "rounded-md bg-amber-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+                            }
+                          >
+                            {withdrawingDeposit[i]
+                              ? "Withdrawing..."
+                              : "Withdraw Governance Deposit"}
                           </button>
                         </div>
                       ) : null}
