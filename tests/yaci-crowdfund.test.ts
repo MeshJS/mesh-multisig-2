@@ -870,4 +870,38 @@ describe("Yaci Crowdfund Contribute", async () => {
     }
     lastSubmitted = txHash;
   });
+
+  it("should allow removal of empty instance", async (t) => {
+    if (skipIfProviderUnavailable(t)) return;
+    const txBuilder = new MeshTxBuilder({
+      fetcher: provider,
+      evaluator: provider,
+    });
+
+    const txHex = await txBuilder
+      .txIn(lastSubmitted, 1)
+      .txInCollateral(lastSubmitted, 1)
+      .spendingPlutusScriptV3()
+      .txIn(lastSubmitted, 0)
+      .txInRedeemerValue(conStr(6, []), "JSON")
+      .txInInlineDatumPresent()
+      .spendingTxInReference(gcfRefInput.txHash, gcfRefInput.outputIndex)
+      .mintPlutusScriptV3()
+      .mint("-1", authTokenPolicyIdValue, "")
+      .mintingScript(authTokenScriptValue.cbor)
+      .mintRedeemerValue(conStr(1, []), "JSON")
+      .requiredSignerHash(proposerKeyHash)
+      .changeAddress(walletAddress)
+      .complete();
+
+    const signedTx = await wallet.signTxReturnFullTx(txHex);
+    let txHash;
+    try {
+      txHash = await provider.submitTx(signedTx);
+    } catch (e) {
+      console.error("Failed to submit transaction:", e);
+      throw e;
+    }
+    lastSubmitted = txHash;
+  });
 });
