@@ -17,6 +17,7 @@ import { registerStakeProposal } from "@/transactions/register-stake";
 import { submitGovActionProposal } from "@/transactions/submit-gov-action";
 import { withdrawGovDeposit } from "@/transactions/withdraw-gov-deposit";
 import { MeshValue } from "@meshsdk/core";
+import { refundProposal } from "@/transactions/refund";
 
 const DEMO_MNEMONIC = [
   "horror",
@@ -75,6 +76,9 @@ export default function Home() {
   const [txHashes, setTxHashes] = useState<string[]>([]);
   const [proposalInfo, setProposalInfo] = useState<ProposalInfo[]>([]);
   const [contributeAmounts, setContributeAmounts] = useState<{
+    [key: number]: string;
+  }>({});
+  const [refundAmounts, setRefundAmounts] = useState<{
     [key: number]: string;
   }>({});
   const [isCreatingScriptRef, setIsCreatingScriptRef] = useState(false);
@@ -275,6 +279,34 @@ export default function Home() {
     setTxHashes((prev) =>
       prev.map((hash) =>
         hash === currentProposalInfo.utxo.input.txHash ? updatedTxHash : hash,
+      ),
+    );
+  };
+
+  const handleRefund = async (proposalIndex: number) => {
+    const amount = refundAmounts[proposalIndex];
+    if (!amount) {
+      setWalletError("Please enter a refund amount");
+      return;
+    }
+    if (!wallet) {
+      setWalletError("Please connect your wallet first.");
+      return;
+    }
+
+    const updatedTxHash = await refundProposal(
+      wallet,
+      provider,
+      provider,
+      provider,
+      proposalInfo[proposalIndex],
+      Number(amount),
+    );
+    setTxHashes((prev) =>
+      prev.map((hash) =>
+        hash === proposalInfo[proposalIndex].utxo.input.txHash
+          ? updatedTxHash
+          : hash,
       ),
     );
   };
@@ -619,35 +651,67 @@ export default function Home() {
                       >
                         {JSON.stringify(info.utxo, null, 2)}
                       </pre>
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Amount (lovelace)"
-                          value={contributeAmounts[i] || ""}
-                          onChange={(e) =>
-                            setContributeAmounts((prev) => ({
-                              ...prev,
-                              [i]: e.target.value,
-                            }))
-                          }
-                          className={
-                            isDark
-                              ? "flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-                              : "flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
-                          }
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleContribute(i)}
-                          className={
-                            isDark
-                              ? "rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-300"
-                              : "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
-                          }
-                        >
-                          Contribute
-                        </button>
+                      <div className="mt-3 space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Amount (lovelace)"
+                            value={contributeAmounts[i] || ""}
+                            onChange={(e) =>
+                              setContributeAmounts((prev) => ({
+                                ...prev,
+                                [i]: e.target.value,
+                              }))
+                            }
+                            className={
+                              isDark
+                                ? "flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+                                : "flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleContribute(i)}
+                            className={
+                              isDark
+                                ? "w-28 rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-300"
+                                : "w-28 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
+                            }
+                          >
+                            Contribute
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Refund amount (lovelace)"
+                            value={refundAmounts[i] || ""}
+                            onChange={(e) =>
+                              setRefundAmounts((prev) => ({
+                                ...prev,
+                                [i]: e.target.value,
+                              }))
+                            }
+                            className={
+                              isDark
+                                ? "flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+                                : "flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none"
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRefund(i)}
+                            className={
+                              isDark
+                                ? "w-28 rounded-md border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800"
+                                : "w-28 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
+                            }
+                          >
+                            Refund
+                          </button>
+                        </div>
                       </div>
                       {canSubmitGovernanceAction(info) ? (
                         <div className="mt-3 flex flex-col items-end gap-2">
