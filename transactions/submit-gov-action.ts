@@ -11,12 +11,7 @@ import {
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { ProposalInfo } from "./contribute-proposal";
 import { CrowdFundScript } from "@/utils/scripts";
-import { Serialization } from "@cardano-sdk/core";
-import {
-  fromPlutusDataToJson,
-  fromTxUnspentOutput,
-  PlutusData,
-} from "@meshsdk/core-cst";
+import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
 import { Crowdfund, CrowdfundGovDatum, Proposed } from "@/types/gcf-spend";
 
 export const submitGovActionProposal = async (

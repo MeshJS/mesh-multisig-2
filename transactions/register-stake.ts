@@ -5,7 +5,6 @@ import {
   MeshTxBuilder,
   conStr,
   conStr0,
-  conStr1,
   MeshValue,
 } from "@meshsdk/core";
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
@@ -13,18 +12,9 @@ import { ProposalInfo } from "./contribute-proposal";
 import {
   stakeRegisterDeposit,
   drepRegisterDeposit,
-  totalDeposit,
-  proposerKeyHash,
-  mockPoolIdHash,
-  govDeposit,
   mockPoolId,
 } from "@/tests/test-utils";
-import { Serialization } from "@cardano-sdk/core";
-import {
-  fromPlutusDataToJson,
-  fromTxUnspentOutput,
-  PlutusData,
-} from "@meshsdk/core-cst";
+import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
 import { CrowdfundGovDatum } from "@/types/gcf-spend";
 import { CrowdFundScript } from "@/utils/scripts";
 

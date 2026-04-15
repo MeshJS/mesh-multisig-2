@@ -1,6 +1,6 @@
 import { CrowdFundScript } from "@/utils/scripts";
 import { IEvaluator, IFetcher, ISubmitter, MeshTxBuilder } from "@meshsdk/core";
-import { Address, HexBlob, PoolId } from "@meshsdk/core-cst";
+import { Address, HexBlob } from "@meshsdk/core-cst";
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 
 export const createScriptRef = async (
