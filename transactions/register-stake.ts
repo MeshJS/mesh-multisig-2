@@ -45,15 +45,19 @@ export const registerStakeProposal = async (
   );
 
   const utxos = await wallet.getUtxosMesh();
+  const collaterals = utxos.filter((u) =>
+    u.output.amount.some(
+      (a) => a.unit === "lovelace" && BigInt(a.quantity) >= 5000000,
+    ),
+  );
+  if (collaterals.length === 0) {
+    throw new Error(
+      "No utxos larger than 5 ADA available in the wallet for collateral",
+    );
+  }
   const walletAddress = await wallet.getChangeAddressBech32();
   if (!walletAddress) {
     throw new Error("Wallet address not found");
-  }
-  const collateral = (await wallet.getCollateral()).map((c) =>
-    fromTxUnspentOutput(Serialization.TransactionUnspentOutput.fromCbor(c)),
-  );
-  if (collateral.length === 0) {
-    throw new Error("No collateral available in the wallet");
   }
 
   const scriptRef = localStorage.getItem("scriptRef");
@@ -68,7 +72,11 @@ export const registerStakeProposal = async (
   // Register DRep, Stake, Delegate and vote
   const txHex = await txBuilder
     .selectUtxosFrom(utxos)
-    .txInCollateral(collateral[0].input.txHash, collateral[0].input.outputIndex)
+    .txInCollateral(
+      collaterals[0].input.txHash,
+      collaterals[0].input.outputIndex,
+    )
+    .setTotalCollateral("5000000")
     .spendingPlutusScriptV3()
     .txIn(proposalInfo.utxo.input.txHash, proposalInfo.utxo.input.outputIndex)
     .txInRedeemerValue(conStr(2, []), "JSON")

@@ -26,6 +26,16 @@ export const createProposal = async (
 ) => {
   const walletAddress = await wallet.getChangeAddressBech32();
   const utxos = await wallet.getUtxosMesh();
+  const collaterals = utxos.filter((u) =>
+    u.output.amount.some(
+      (a) => a.unit === "lovelace" && BigInt(a.quantity) >= 5000000,
+    ),
+  );
+  if (collaterals.length === 0) {
+    throw new Error(
+      "No utxos larger than 5 ADA available in the wallet for collateral",
+    );
+  }
   const initialTxHash = utxos[0].input.txHash;
   const initialTxIndex = utxos[0].input.outputIndex;
   const addressBech32 = (await wallet.getUsedAddresses())[0];
@@ -96,7 +106,11 @@ export const createProposal = async (
       ),
       "JSON",
     )
-    .txInCollateral(utxos[0].input.txHash, utxos[0].input.outputIndex)
+    .txInCollateral(
+      collaterals[0].input.txHash,
+      collaterals[0].input.outputIndex,
+    )
+    .setTotalCollateral("5000000")
     .changeAddress(walletAddress)
     .complete();
 

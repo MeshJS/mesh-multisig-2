@@ -8,12 +8,7 @@ import {
   MeshValue,
   UTxO,
 } from "@meshsdk/core";
-import {
-  fromPlutusDataToJson,
-  fromTxUnspentOutput,
-  PlutusData,
-  Serialization,
-} from "@meshsdk/core-cst";
+import { fromPlutusDataToJson, PlutusData } from "@meshsdk/core-cst";
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 
 export type ProposalInfo = {
@@ -85,15 +80,19 @@ export const contributeProposal = async (
   });
   // Contributing to crowdfund
   const utxos = await wallet.getUtxosMesh();
+  const collaterals = utxos.filter((u) =>
+    u.output.amount.some(
+      (a) => a.unit === "lovelace" && BigInt(a.quantity) >= 5000000,
+    ),
+  );
+  if (collaterals.length === 0) {
+    throw new Error(
+      "No utxos larger than 5 ADA available in the wallet for collateral",
+    );
+  }
   const walletAddress = await wallet.getChangeAddressBech32();
   if (!walletAddress) {
     throw new Error("Wallet address not found");
-  }
-  const collateral = (await wallet.getCollateral()).map((c) =>
-    fromTxUnspentOutput(Serialization.TransactionUnspentOutput.fromCbor(c)),
-  );
-  if (collateral.length === 0) {
-    throw new Error("No collateral available in the wallet");
   }
 
   // Get script ref from local storage
@@ -103,7 +102,10 @@ export const contributeProposal = async (
   }
   const txHex = await txBuilder
     .selectUtxosFrom(utxos)
-    .txInCollateral(collateral[0].input.txHash, collateral[0].input.outputIndex)
+    .txInCollateral(
+      collaterals[0].input.txHash,
+      collaterals[0].input.outputIndex,
+    )
     .spendingPlutusScriptV3()
     .txIn(proposalInfo.utxo.input.txHash, proposalInfo.utxo.input.outputIndex)
     .txInRedeemerValue(conStr0([]), "JSON")
@@ -130,6 +132,7 @@ export const contributeProposal = async (
         quantity: contributeAmount.toString(),
       },
     ])
+    .setTotalCollateral("5000000")
     .invalidHereafter(latestBlock.slot + 30)
     .changeAddress(walletAddress)
     .complete();
